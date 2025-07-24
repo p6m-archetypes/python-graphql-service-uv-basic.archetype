@@ -1,60 +1,80 @@
-# Build stage
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
-WORKDIR /src
+# Multi-stage Docker build for {{ PrefixName }} {{ SuffixName }}
+FROM python:3.11-slim as builder
 
-# Copy csproj files and restore dependencies (for better layer caching)
-COPY *.sln ./
-COPY Directory.Build.props ./
-COPY NuGet.config ./
-COPY {{ PrefixName }}{{ SuffixName }}.API/*.csproj ./{{ PrefixName }}{{ SuffixName }}.API/
-COPY {{ PrefixName }}{{ SuffixName }}.Client/*.csproj ./{{ PrefixName }}{{ SuffixName }}.Client/
-COPY {{ PrefixName }}{{ SuffixName }}.Core/*.csproj ./{{ PrefixName }}{{ SuffixName }}.Core/
-COPY {{ PrefixName }}{{ SuffixName }}.Persistence/*.csproj ./{{ PrefixName }}{{ SuffixName }}.Persistence/
-COPY {{ PrefixName }}{{ SuffixName }}.Server/*.csproj ./{{ PrefixName }}{{ SuffixName }}.Server/
-COPY {{ PrefixName }}{{ SuffixName }}.IntegrationTests/*.csproj ./{{ PrefixName }}{{ SuffixName }}.IntegrationTests/
-COPY {{ PrefixName }}{{ SuffixName }}.UnitTests/*.csproj ./{{ PrefixName }}{{ SuffixName }}.UnitTests/
+# Set environment variables for Python
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
 
-# Restore dependencies
-RUN dotnet restore
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    curl \
+    git \
+    && rm -rf /var/lib/apt/lists/*
 
-# Copy source code
-COPY . .
+# Install uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 
-# Build and publish
-WORKDIR /src/{{ PrefixName }}{{ SuffixName }}.Server
-RUN dotnet publish -c Release -o /app/publish --no-restore
-
-# Runtime stage
-FROM mcr.microsoft.com/dotnet/aspnet:8.0-alpine AS runtime
-
-# Create non-root user for security
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
-
-# Install ca-certificates and curl for health checks
-RUN apk add --no-cache ca-certificates curl
-
-# Set working directory and permissions
+# Set work directory
 WORKDIR /app
-RUN chown -R appuser:appgroup /app
 
-# Copy published application
-COPY --from=build --chown=appuser:appgroup /app/publish .
+# Copy all package configurations
+COPY pyproject.toml uv.lock* ./
+COPY {{ prefix-name }}-{{ suffix-name }}-core/pyproject.toml ./{{ prefix-name }}-{{ suffix-name }}-core/
+COPY {{ prefix-name }}-{{ suffix-name }}-persistence/pyproject.toml ./{{ prefix-name }}-{{ suffix-name }}-persistence/
+COPY {{ prefix-name }}-{{ suffix-name }}-api/pyproject.toml ./{{ prefix-name }}-{{ suffix-name }}-api/
+COPY {{ prefix-name }}-{{ suffix-name }}-client/pyproject.toml ./{{ prefix-name }}-{{ suffix-name }}-client/
+COPY {{ prefix-name }}-{{ suffix-name }}-server/pyproject.toml ./{{ prefix-name }}-{{ suffix-name }}-server/
+
+# Copy all source code
+COPY {{ prefix-name }}-{{ suffix-name }}-core/src ./{{ prefix-name }}-{{ suffix-name }}-core/src/
+COPY {{ prefix-name }}-{{ suffix-name }}-persistence/src ./{{ prefix-name }}-{{ suffix-name }}-persistence/src/
+COPY {{ prefix-name }}-{{ suffix-name }}-api/src ./{{ prefix-name }}-{{ suffix-name }}-api/src/
+COPY {{ prefix-name }}-{{ suffix-name }}-client/src ./{{ prefix-name }}-{{ suffix-name }}-client/src/
+COPY {{ prefix-name }}-{{ suffix-name }}-server/src ./{{ prefix-name }}-{{ suffix-name }}-server/src/
+
+# Copy scripts
+COPY scripts ./scripts
+
+# Install dependencies
+RUN uv sync --frozen --no-dev
+
+# Production stage
+FROM python:3.11-slim as production
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PATH="/app/.venv/bin:$PATH"
+
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+
+# Set work directory
+WORKDIR /app
+
+# Copy virtual environment and full application from builder stage
+COPY --from=builder --chown=appuser:appuser /app /app
 
 # Switch to non-root user
 USER appuser
 
-# Expose ports
-EXPOSE 5030
-EXPOSE 5031
+# Set working directory to server package to avoid namespace conflicts
+WORKDIR /app/{{ prefix-name }}-{{ suffix-name }}-server/src
+
+# Expose ports (FastAPI default 8000, management 8080)
+EXPOSE 8000 8080
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-    CMD curl -f http://localhost:5031/health/live || exit 1
+    CMD curl -f http://localhost:8080/health/live || exit 1
 
-# Environment variables for runtime configuration
-ENV ASPNETCORE_ENVIRONMENT=Production
-ENV ASPNETCORE_URLS=http://+:5030;http://+:5031
-ENV DOTNET_EnableDiagnostics=0
-
-# Set the entry point
-ENTRYPOINT ["dotnet", "{{ PrefixName }}{{ SuffixName }}.Server.dll"]
+# Default command  
+CMD ["python", "-m", "{{ org_name }}.{{ solution_name }}.{{ prefix_name }}.{{ suffix_name }}.server.main"]

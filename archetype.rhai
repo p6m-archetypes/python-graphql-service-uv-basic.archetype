@@ -1,14 +1,9 @@
 let context = #{};
 
-if switch_enabled("debug-answers") {
-    log(Info, archetect::archetype::description() +" Answers:");
-    display(as_yaml(ANSWERS));
-}
-
-// Use the same switches, defaults, etc passed to this archetype, and pass them to the next
-let render_settings = archetect::archetype::settings();
-
-// context += render(Archetype("org-prompts"), ANSWERS, render_settings);
+// This generally comes from ANSWERS, but prompting for it ensures it is in the context 
+context += prompt("Project Author:", "author_full", #{
+    placeholder: "Your Name <your.name@example.com>",
+});
 
 context += prompt("Org Name:", "org-name", #{
   placeholder: "Acme",
@@ -20,20 +15,21 @@ context += prompt("Org Name:", "org-name", #{
 });
 
 context += prompt("Solution Name:", "solution-name", #{
-  placeholder: "Widgets",
+  placeholder: "RestAPI",
   cased_as: [
     CasedIdentityCasedValue(PROGRAMMING_CASES),
-    FixedKeyCasedValue("org-title", TitleCase),
+    FixedKeyCasedValue("solution-title", TitleCase),
   ],
-  help: "Soltution Name",
+  help: "Solution Name",
 });
 
 context += prompt("Project Prefix:", "prefix-name", #{
+  placeholder: "User",
   cased_as: [
     CasedIdentityCasedValue(PROGRAMMING_CASES),
     FixedKeyCasedValue("project-title", TitleCase),
   ],
-  help: "Business Function",
+  help: "Business Domain/Resource Name",
 });
 
 context += prompt("Project Suffix:", "suffix-name", #{
@@ -42,57 +38,7 @@ context += prompt("Project Suffix:", "suffix-name", #{
     CasedIdentityCasedValue(PROGRAMMING_CASES),
     FixedKeyCasedValue("suffix-title", TitleCase),
   ],
-  help: "Project Type",
+  help: "Project Type (e.g., Service, API)",
 });
 
-// context += render(Archetype("java-project-attributes"), ANSWERS + context + #{
-//     "suffix_default": "Service",
-//     "suffix_options": [
-//         "Service",
-//         "Orchestrator",
-//         "Adapter",
-//     ],
-// }, render_settings);
-
-// context += prompt("Persistence:", "persistence", #{
-//   type: Select([
-//     "CockroachDB",
-//     "None",
-//   ]),
-//   defaults_with: "CockroachDB",
-// });
-
-context += prompt("Artifactory Host:", "artifactory-host", #{
-  defaults_with: "p6m.jfrog.io",
-});
-
-context += set("service-port", 5030);
-context += set("management-port", context["service-port"] + 1);
-context += set("database-port", 26257);
-context += set("debug-port", context["service-port"] + 9);
-
-if switch_enabled("debug-context") {
-    log(Info, `${archetect::archetype::description()} (${context["project-name"]}) Context:`);
-    display(as_yaml(context));
-}
-
-render(Directory("contents/base"), context);
-
-// if context["persistence"] == "CockroachDB" {
-//   render(Directory("contents/persistence"), context);
-//   for entity_key in context.model.entities.keys() {
-//     let entity = context.model.entities[entity_key];
-//     let entity_context = #{};
-//     entity_context += set("entity-name", entity_key, #{
-//         cases: [
-//             CasedIdentityCasedValue(PROGRAMMING_CASES),
-//         ],
-//     });
-//     render(Directory("contents/persistence_entity"), context + entity_context);
-//   }
-// }
-
-// render(Archetype("manifests"), context["artifact-id"], context);
-
-// Return Context
-context
+render(Directory("contents/base"), context) 

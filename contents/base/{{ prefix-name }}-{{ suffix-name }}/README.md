@@ -1,177 +1,49 @@
-# {{ PrefixName }} {{ SuffixName }}
+# {{ PrefixName }} {{ SuffixName }} Python
 
-**// TODO:** Add description of your project's business function.
+A modular, enterprise-grade Python REST {{ suffix-name }} with FastAPI and modern tooling.
 
-Generated from the [.NET gRPC Service Archetype](https://github.com/p6m-archetypes/{{ prefix-name }}-{{ suffix-name }}.archetype).
+## 🚀 Getting Started
 
-## Table of Contents
+### Prerequisites
+- **Python 3.11+**
+- **uv** (modern Python package manager)
+- **Docker & Docker Compose** (for database and services)
 
-- [Prereqs](#prereqs)
-  - [1. .NET SDK](#1-net-sdk)
-  - [2. NuGet Package Management](#2-nuget-package-management)
-  - [3. Docker Installed and Running](#3-docker-installed-and-running)
-- [Overview](#overview)
-  - [Project Structure / Modules](#project-structure--modules)
-  - [Build System](#build-system)
-- [Build](#build)
-- [Run Server](#run-server)
-  - [Using your service's APIs](#using-your-services-apis)
-- [Ephemeral Mode (Recommended for Development)](#ephemeral-mode-recommended-for-development)
-  - [Running with Ephemeral Database](#running-with-ephemeral-database)
-  - [Ephemeral Mode Configuration](#ephemeral-mode-configuration)
-  - [Integration Tests](#integration-tests)
-- [Management API](#management-api)
-  - [Health Checks](#health-checks)
-  - [Metrics](#metrics)
-- [DB migrations](#db-migrations)
-- [Contributions](#contributions)
-
-## Prereqs
-
-### 1. .NET SDK
-
-- **Version:** 9.0 or higher
-- **Verify:**
-  ```bash
-  dotnet --version # → 9.x.x or greater
-  ```
-- See https://developer.p6m.dev/docs/workstation/dotnet for instructions
-
-### 2. NuGet Package Management
-
-- **Verify** you've configured **Artifactory**
-  ```bash
-  echo $ARTIFACTORY_USERNAME
-  echo $ARTIFACTORY_IDENTITY_TOKEN
-  ```
-- See https://developer.p6m.dev/docs/workstation/core/artifacts for instructions
-
-### 3. Docker Installed and Running
-
-- **Verify** you have installed docker
-  ```bash
-  docker --version # Should be version X.X.+
-  docker info # Should list server info without any errors
-  ```
-- See https://developer.p6m.dev/docs/workstation/core/docker for instructions
-
-# Overview
-
-## Project Structure / Modules
-
-| Directory                                                                          | Description                                                                                |
-| ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| [{{ PrefixName }}{{ SuffixName }}.API]({{ PrefixName }}{{ SuffixName }}.API/README.md)                           | Service Interfaces with a gRPC model. gRPC/Protobuf spec.                                  |
-| [{{ PrefixName }}{{ SuffixName }}.Client]({{ PrefixName }}{{ SuffixName }}.Client/README.md)                     | gRPC Client. Implements the API.                                                           |
-| [{{ PrefixName }}{{ SuffixName }}.Core]({{ PrefixName }}{{ SuffixName }}.Core/README.md)                         | Business Logic. Abstracts Persistence, defines Transaction Boundaries. Implements the API. |
-| [{{ PrefixName }}{{ SuffixName }}.IntegrationTests]({{ PrefixName }}{{ SuffixName }}.IntegrationTests/README.md) | Leverages the Client to test the Server and it's dependencies.                             |
-| [{{ PrefixName }}{{ SuffixName }}.Persistence]({{ PrefixName }}{{ SuffixName }}.Persistence/README.md)           | Persistence Entities and Data Repositories. Wrapped by Core.                               |
-| [{{ PrefixName }}{{ SuffixName }}.Server]({{ PrefixName }}{{ SuffixName }}.Server/README.md)                     | Transport/Protocol Host. Wraps Core.                                                       |
-
-## Build System
-
-This project uses [dotnet](https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet#general) as its build system. Common goals include
-
-| Goal    | Description                                        |
-| ------- | -------------------------------------------------- |
-| clean   | Clean build outputs.                               |
-| build   | Builds a .NET application.                         |
-| restore | Restores the dependencies for a given application. |
-| run     | Runs the application from source                   |
-| test    | Runs tests using a test runner                     |
-
-## Build
+### Quick Setup
 
 ```bash
-dotnet build
+# 1. Install dependencies
+uv sync --dev
+
+# 2. Start database
+docker-compose up postgres -d
+
+# 3. Run migrations
+uv run {{ prefix-name }}-{{ suffix-name }}-migrate upgrade
+
+# 4. Start the server
+uv run {{ prefix-name }}-{{ suffix-name }}-server
 ```
 
-## Run Server
+**That's it!** The server runs on:
+- **REST API**: `http://localhost:8000`
+- **Management/Health**: `http://localhost:8080`
 
-Start the server locally or using Docker. You can run the server from either the project root or from within the server directory:
+### Alternative: Ephemeral Database
 
-**Option 1: From project root (specify project):**
+For development without Docker Compose, use the built-in ephemeral database:
 
 ```bash
-dotnet run --project {{ PrefixName }}{{ SuffixName }}.Server -- --ephemeral
+# 1. Install dependencies
+uv sync --dev
+
+# 2. Start server with ephemeral database (auto-starts TestContainers PostgreSQL)
+./scripts/run-server-ephemeral.sh
 ```
 
-**Option 2: From server directory (simpler syntax):**
+**Requirements**: Docker must be running (Docker Desktop, Rancher Desktop, etc.)
 
-```bash
-cd {{ PrefixName }}{{ SuffixName }}.Server
-dotnet run -- --ephemeral
-```
-
-This server accepts connections on the following ports:
-
-- 5030: used for application gRPC Service traffic.
-- 5031: used to monitor the application over HTTP.
-- 26257: exposes the persistent database port (when using docker-compose)
-
-### Using your service's APIs
-
-Create, Read, Update and Delete an entity using a gRPC client, like [grpcurl](https://github.com/fullstorydev/grpcurl) (CLI) or [grpcui](https://github.com/fullstorydev/grpcui) (GUI).
-
-Create{{ PrefixName }}
-
-```bash
-grpcurl -plaintext -d '{"name": "test"}' localhost:5030 \
-    {{ org_name }}.{{ solution_name }}.{{ prefix_name }}.{{ suffix_name }}.grpc.{{ PrefixName }}{{ SuffixName }}/Create{{ PrefixName }}
-```
-
-Get{{ PrefixName }}s
-
-```bash
-grpcurl -plaintext -d '{"start_page": "1", "page_size": "5"}' localhost:5030 \
-    {{ org_name }}.{{ solution_name }}.{{ prefix_name }}.{{ suffix_name }}.grpc.{{ PrefixName }}{{ SuffixName }}/Get{{ PrefixName }}s
-```
-
-## Ephemeral Mode (Recommended for Development)
-
-The service supports an **ephemeral mode** that automatically starts a PostgreSQL database in a Docker container using [Testcontainers](https://dotnet.testcontainers.org/). This provides a real PostgreSQL database for development and testing without requiring any manual setup.
-
-### Running with Ephemeral Database
-
-Start the server with the `--ephemeral` flag:
-
-**Option 1: From project root:**
-
-```bash
-dotnet run --project {{ PrefixName }}{{ SuffixName }}.Server -- --ephemeral
-```
-
-**Option 2: From server directory:**
-
-```bash
-cd {{ PrefixName }}{{ SuffixName }}.Server
-dotnet run -- --ephemeral
-```
-
-**What happens:**
-
-- Automatically downloads and starts a PostgreSQL 15 Alpine container
-- Creates a fresh database with a random port
-- Creates database schema from current Entity Framework model (clean state)
-- Starts the gRPC service
-- Cleans up the container when the service stops
-
-**Benefits:**
-
-- ✅ **Zero setup** - No need to install PostgreSQL or run docker-compose
-- ✅ **Real database** - Uses actual PostgreSQL, not in-memory simulation
-- ✅ **Clean state** - Fresh database on every startup
-- ✅ **Automatic cleanup** - Container is removed when service stops
-- ✅ **Perfect for development** - Matches production database behavior
-- ✅ **Database connection info** - Displays connection details for DataGrip/psql
-
-**Requirements:**
-
-- Docker must be installed and running
-- Internet connection (first time only, to download PostgreSQL image)
-
-**Database Connection Information:**
-When running in ephemeral mode, the service will display database connection information in the console:
+**Connection Information**: When the ephemeral database starts, detailed connection information is logged to help you connect with database tools:
 
 ```
 ================================================================================
@@ -180,131 +52,231 @@ When running in ephemeral mode, the service will display database connection inf
 
 📋 Connection Details:
    Host:     localhost
-   Port:     54321
-   Database: {{ prefix-name }}-{{ suffix-name }}-ephemeral
+   Port:     54321  (randomized port)
+   Database: {{ prefix_name }}_{{ suffix_name }}
    Username: postgres
-   Password: testpassword
-
-🔗 Connection Strings:
-   .NET Connection String:
-   Host=localhost;Port=54321;Database={{ prefix-name }}-{{ suffix-name }}-ephemeral;Username=postgres;Password=testpassword
-
-   JDBC URL (for DataGrip/IntelliJ):
-   jdbc:postgresql://localhost:54321/{{ prefix-name }}-{{ suffix-name }}-ephemeral
+   Password: postgres
 
 💻 Connect via psql:
-   psql -h localhost -p 54321 -U postgres -d {{ prefix-name }}-{{ suffix-name }}-ephemeral
-   Password: testpassword
+   psql -h localhost -p 54321 -U postgres -d {{ prefix_name }}_{{ suffix_name }}
 
 🔧 DataGrip/Database Tool Settings:
    Type:     PostgreSQL
    Host:     localhost
    Port:     54321
-   Database: {{ prefix-name }}-{{ suffix-name }}-ephemeral
+   Database: {{ prefix_name }}_{{ suffix_name }}
    User:     postgres
-   Password: testpassword
-
-ℹ️  Note: This is an ephemeral database that will be destroyed when the application stops.
+   Password: postgres
 ================================================================================
 ```
 
-This makes it easy to connect with database tools like DataGrip, pgAdmin, or command-line psql during development.
-
-### Ephemeral Mode Configuration
-
-The ephemeral database can be configured via `appsettings.Ephemeral.json`:
-
-```json
-{
-  "Ephemeral": {
-    "Database": {
-      "Image": "postgres:15-alpine",
-      "DatabaseName": "{{ prefix-name }}-{{ suffix-name }}-ephemeral",
-      "Username": "postgres",
-      "Password": "testpassword",
-      "Reuse": false
-    }
-  }
-}
-```
-
-**Configuration Options:**
-
-- `Image`: PostgreSQL Docker image to use
-- `DatabaseName`: Name of the database to create
-- `Username`: Database username
-- `Password`: Database password
-- `Reuse`: Whether to reuse existing containers (false = always create fresh)
-
-### Integration Tests
-
-Integration tests automatically use ephemeral mode and get their own isolated PostgreSQL container:
+### Quick Test
 
 ```bash
-dotnet test {{ PrefixName }}{{ SuffixName }}.IntegrationTests
+# Health check
+curl http://localhost:8080/health
+
+# API endpoints
+curl http://localhost:8000/
+curl http://localhost:8000/api/v1/{{ prefix_name }}s
+
+# Authentication
+curl -X POST http://localhost:8000/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "test", "password": "test"}'
 ```
 
-Each test run gets:
+## 🏗️ Build System
 
-- Fresh PostgreSQL container on a random port
-- Clean database state
-- Real database transactions and constraints
-- Automatic cleanup after tests complete
-
-### Running DB locally with persistent state
-
-Run Database dependencies with `docker-compose`
+This project features a **modern build pipeline** with uv:
 
 ```bash
+# Build all components
+uv build
+
+# Development installation
+uv sync --dev
+```
+
+The build system automatically:
+- ✅ Installs dependencies with deterministic resolution
+- ✅ Validates project structure
+- ✅ Handles multi-package workspace
+- ✅ Provides extensible pipeline for future build steps
+
+## 📋 Essential Commands
+
+### Development
+```bash
+uv sync --dev                          # Install dependencies with dev tools
+uv run {{ prefix-name }}-{{ suffix-name }}-server          # Start server
+uv build                               # Build all packages
+```
+
+### Database
+```bash
+uv run {{ prefix-name }}-{{ suffix-name }}-migrate upgrade  # Run migrations
+uv run {{ prefix-name }}-{{ suffix-name }}-migrate current  # Check migration status
+```
+
+### Testing
+```bash
+uv run pytest                          # All tests
+uv run pytest -m unit                  # Unit tests only
+uv run pytest -m integration           # Integration tests only
+```
+
+### Code Quality
+```bash
+uv run black . && uv run isort . && uv run flake8  # Format and lint
+uv run mypy                            # Type checking
+```
+
+## 🏛️ Architecture
+
+Modular design with clear separation of concerns:
+
+```
+{{ prefix-name }}-{{ suffix-name }}-python/
+├── {{ prefix-name }}-{{ suffix-name }}-api/          # Business contracts and DTOs
+├── {{ prefix-name }}-{{ suffix-name }}-core/         # Business logic implementation
+├── {{ prefix-name }}-{{ suffix-name }}-persistence/  # Database entities and repositories
+├── {{ prefix-name }}-{{ suffix-name }}-server/       # FastAPI server and endpoints
+├── {{ prefix-name }}-{{ suffix-name }}-client/       # HTTP client library
+└── {{ prefix-name }}-{{ suffix-name }}-integration-tests/ # End-to-end testing
+```
+
+## ✨ Enterprise Features
+
+### Core Capabilities
+- **REST-First**: FastAPI with automatic OpenAPI documentation
+- **Async/Await**: Full async implementation using asyncio
+- **Database**: SQLAlchemy 2.0 with Alembic migrations
+- **Testing**: pytest with TestContainers for integration tests
+
+### Observability
+- **Structured Logging**: JSON logging with correlation IDs
+- **Metrics**: Prometheus with custom business metrics
+- **Health Checks**: Kubernetes-ready endpoints (`/health`, `/health/live`, `/health/ready`)
+- **OpenAPI**: Interactive documentation at `/docs`
+
+### Enterprise Middleware
+- **Authentication**: JWT with role-based authorization
+- **Rate Limiting**: Request throttling
+- **CORS**: Cross-origin resource sharing
+- **Correlation IDs**: Request tracing across services
+
+## 🔧 Configuration
+
+Key environment variables:
+
+```bash
+# Database
+DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/{{ prefix_name }}_{{ suffix_name }}
+
+# Server Ports
+API_PORT=8000                     # REST API port
+MANAGEMENT_PORT=8080              # Health/metrics port
+
+# Authentication
+JWT_SECRET_KEY=your-secret-key
+JWT_ALGORITHM=HS256
+JWT_ACCESS_TOKEN_EXPIRE_MINUTES=30
+
+# CORS
+CORS_ORIGINS=["http://localhost:3000"]
+
+# Logging
+LOG_LEVEL=INFO                    # Application log level
+ENVIRONMENT=development           # Deployment environment
+```
+
+## 🐳 Docker
+
+### Development
+```bash
+# Start all services (database + monitoring)
 docker-compose up -d
+
+# Build and run {{ suffix-name }}
+docker build -t {{ prefix-name }}-{{ suffix-name }} .
+docker run -p 8000:8000 -p 8080:8080 {{ prefix-name }}-{{ suffix-name }}
 ```
 
-Shutdown local database
+### Production
+The Dockerfile uses **multi-stage builds** with uv for fast, secure containers:
+- Non-root execution
+- Minimal dependencies
+- Optimized layer caching
 
+## 📊 Monitoring
+
+### Included Monitoring Stack
 ```bash
-docker-compose down
+docker-compose up -d  # Includes Prometheus + Grafana
 ```
 
-## Management API
+- **Grafana**: `http://localhost:3000` (dashboards included)
+- **Prometheus**: `http://localhost:9090` (metrics collection)
+- **Application Metrics**: `http://localhost:8080/metrics`
 
-### Health Checks
+### Key Metrics
+- HTTP request rates, latencies, error rates
+- Database connection pool status
+- Custom business metrics
+- Health check status
 
-Verify things are up and running by looking at the [/health](http://localhost:5031/health) endpoint:
+## 🧪 Testing
 
+### Test Categories
+- **Unit Tests**: Fast, isolated component testing
+- **Integration Tests**: Database and service integration with TestContainers
+- **End-to-End Tests**: Complete API workflow testing
+
+### Running Tests
 ```bash
-curl localhost:5031/health
+# All tests
+uv run pytest
+
+# Specific categories
+uv run pytest -m unit
+uv run pytest -m integration
+
+# With coverage
+uv run pytest --cov={{ org-name }} --cov-report=html
 ```
 
-## Metrics
+## 🔒 Security
 
-Prometheus - [Prometheus](https://github.com/prometheus-net/prometheus-net)
+- **Container Security**: Non-root execution, minimal base image
+- **Database Security**: Parameterized queries, connection pooling
+- **Network Security**: Port isolation, secure configuration
+- **Authentication**: JWT-based auth with role-based access control
 
-[/metrics](http://localhost:5031/metrics) endpoint:
+## 📈 Performance
 
-```bash
-curl localhost:5031/metrics
-```
+- **Async Architecture**: Full asyncio implementation
+- **Connection Pooling**: Configurable database connection management
+- **FastAPI Optimizations**: Pydantic validation, automatic serialization
+- **Caching**: Redis integration for performance-critical paths
 
-## DB migrations
+## 🤝 Contributing
 
-### Create DB Migration
+### Development Workflow
+1. Fork the repository
+2. Run `uv sync --dev` to set up environment
+3. Make changes with tests
+4. Run `uv run pytest` and code quality checks
+5. Submit a pull request
 
-```bash
-dotnet ef migrations add InitialCreation  --project {{ PrefixName }}{{ SuffixName }}.Persistence -s {{ PrefixName }}{{ SuffixName }}.Server
-```
+### Code Quality Standards
+- **Type Hints**: Full type annotation coverage
+- **Formatting**: Black and isort for consistent code style
+- **Linting**: Comprehensive checks with flake8 and mypy
+- **Testing**: Maintain high test coverage
 
-### Apply DB migrations
+## 📚 More Information
 
-```bash
-dotnet ef database update --project {{ PrefixName }}{{ SuffixName }}.Persistence -s {{ PrefixName }}{{ SuffixName }}.Server
-```
-
-### Remove DB migrations
-
-```bash
-dotnet ef migrations remove --project {{ PrefixName }}{{ SuffixName }}.Persistence -s {{ PrefixName }}{{ SuffixName }}.Server
-```
-
-## Contributions
-
-**// TODO:** Add description of how you would like issues to be reported and people to reach out.
+- **API Documentation**: Interactive docs at `http://localhost:8000/docs`
+- **Health Endpoints**: Kubernetes-compatible health checks at `/health/*`
+- **OpenAPI Spec**: JSON schema at `http://localhost:8000/openapi.json`

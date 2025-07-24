@@ -2,7 +2,7 @@ on:
   workflow_dispatch:
     inputs:
       version-level:
-        description: "Version bump level"
+        description: 'Version bump level'
         required: true
         type: choice
         options:
@@ -24,60 +24,51 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup .NET
-        uses: p6m-actions/dotnet-setup@v1
-
-      - name: Login to .NET Repository
-        uses: p6m-actions/dotnet-repository-login@v1
+      - name: Setup Python and uv
+        uses: p6m-actions/python-uv-setup@v1
         with:
-          repository: {{ org-name }}-{{ solution-name }}-nuget
-          repository-url: https://${{'{'}}{ vars.ARTIFACTORY_HOSTNAME }}/artifactory/api/nuget/{{ org-name }}-{{ solution-name }}-nuget
-          username: ${{'{'}}{ secrets.ARTIFACTORY_USERNAME }}
-          password: ${{'{'}}{ secrets.ARTIFACTORY_IDENTITY_TOKEN }}
+          python-version: "3.11"
+
+      - name: Login to Python Repository
+        uses: p6m-actions/python-uv-repository-login@v1
+        with:
+          credentials: |
+            artifactory=${{'{'}}{ secrets.ARTIFACTORY_USERNAME }}:${{'{'}}{ secrets.ARTIFACTORY_IDENTITY_TOKEN }}
 
       - name: Cut Tag
         id: cut-tag
-        uses: p6m-actions/dotnet-cut-tag@v1
+        uses: p6m-actions/python-uv-cut-tag@v1
         with:
           version-level: ${{'{'}}{ inputs.version-level }}
 
-      - name: Build .NET Application
-        uses: p6m-actions/dotnet-build@v1
+      - name: Build Python Application
+        uses: p6m-actions/python-uv-build@v1
         with:
+          modules: "{{ prefix-name }}-{{ suffix-name }}-api {{ prefix-name }}-{{ suffix-name }}-core {{ prefix-name }}-{{ suffix-name }}-persistence {{ prefix-name }}-{{ suffix-name }}-server {{ prefix-name }}-{{ suffix-name }}-client"
           run-tests: true
           version: ${{'{'}}{ steps.cut-tag.outputs.version }}
 
       - name: Login to Docker Repository
         uses: p6m-actions/docker-repository-login@v1
         with:
-          registry: ${{'{'}}{ vars.ARTIFACTORY_HOSTNAME }}
           username: ${{'{'}}{ secrets.ARTIFACTORY_USERNAME }}
           password: ${{'{'}}{ secrets.ARTIFACTORY_IDENTITY_TOKEN }}
 
-      - name: Set up Docker Buildx
-        id: buildx
-        uses: p6m-actions/docker-buildx-setup@v1
-
       - name: Build and Publish Docker Image
         id: docker-publish
-        uses: p6m-actions/docker-buildx-build-publish@v1
+        uses: p6m-actions/python-uv-docker-publish@v1
         with:
           image-name: {{ prefix-name }}-{{ suffix-name }}-server
           image-tag: ${{'{'}}{ steps.cut-tag.outputs.version }}
-          registry: ${{'{'}}{ vars.ARTIFACTORY_HOSTNAME }}/{{ org-name }}-{{ solution-name }}-docker-local/applications
+          registry: {{ org-name }}-{{ solution-name }}-docker-local/applications
           push: true
-          skip-setup: true
-          builder-name: ${{'{'}}{ steps.buildx.outputs.name }}
-          secrets: |
-            artifactory-token=${{'{'}}{ secrets.ARTIFACTORY_TOKEN }}
+          version: ${{'{'}}{ steps.cut-tag.outputs.version }}
 
-      - name: Publish to .NET Repository
-        uses: p6m-actions/dotnet-repository-publish@v1
+      - name: Publish to Python Repository
+        uses: p6m-actions/python-uv-repository-publish@v1
         with:
-          repositories: |
-            {{ org-name }}-{{ solution-name }}-nuget
-        env:
-          NUGET_API_KEY: "${{'{'}}{ secrets.ARTIFACTORY_USERNAME }}:${{'{'}}{ secrets.ARTIFACTORY_IDENTITY_TOKEN }}"
+          modules: "{{ prefix-name }}-{{ suffix-name }}-api {{ prefix-name }}-{{ suffix-name }}-core {{ prefix-name }}-{{ suffix-name }}-persistence {{ prefix-name }}-{{ suffix-name }}-server {{ prefix-name }}-{{ suffix-name }}-client"
+          repository: artifactory
 
       - name: Update Application Manifest
         uses: p6m-actions/platform-application-manifest-dispatch@v1
