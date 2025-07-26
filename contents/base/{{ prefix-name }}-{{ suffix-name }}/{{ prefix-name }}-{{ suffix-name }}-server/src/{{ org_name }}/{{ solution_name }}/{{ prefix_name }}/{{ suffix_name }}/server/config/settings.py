@@ -21,11 +21,11 @@ class Settings(BaseSettings):
     
     # API Configuration
     api_title: str = Field(
-        default="{{ PrefixName }}{{ SuffixName }} REST API",
+        default="{{ PrefixName }}{{ SuffixName }} GraphQL API",
         description="API title for OpenAPI documentation"
     )
     api_description: str = Field(
-        default="A modern REST API service built with FastAPI",
+        default="A modern GraphQL API service built with FastAPI and Strawberry",
         description="API description for OpenAPI documentation"
     )
     api_version: str = Field(
@@ -57,6 +57,28 @@ class Settings(BaseSettings):
     cors_allow_headers: List[str] = Field(
         default=["*"],
         description="Allowed headers for CORS"
+    )
+    
+    # GraphQL Configuration
+    graphql_endpoint: str = Field(
+        default="/graphql",
+        description="GraphQL endpoint path"
+    )
+    graphql_playground_enabled: bool = Field(
+        default=True,
+        description="Enable GraphQL Playground in development"
+    )
+    graphql_introspection_enabled: bool = Field(
+        default=True,
+        description="Enable GraphQL schema introspection"
+    )
+    graphql_max_query_depth: int = Field(
+        default=10,
+        description="Maximum allowed query depth"
+    )
+    graphql_max_query_complexity: int = Field(
+        default=50,
+        description="Maximum allowed query complexity"
     )
     
     # Database Configuration

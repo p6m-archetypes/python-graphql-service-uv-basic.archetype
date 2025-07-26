@@ -1,9 +1,9 @@
 """
 {{ PrefixName }}{{ SuffixName }} FastAPI Application
 
-This module creates and configures the main FastAPI application for the REST API.
+This module creates and configures the main FastAPI application with both REST and GraphQL APIs.
 Similar to how the gRPC archetype has gRPC service implementations that delegate to core services,
-this FastAPI app provides REST endpoints that delegate to the same business logic.
+this FastAPI app provides REST endpoints and GraphQL resolvers that delegate to the same business logic.
 """
 
 import logging
@@ -15,9 +15,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
 from pydantic import ValidationError
+from strawberry.fastapi import GraphQLRouter
 
 from .config.settings import get_settings
 from .middleware.auth import get_auth_service
+
+# Import GraphQL schema
+from {{ org_name }}.{{ solution_name }}.{{ prefix_name }}.{{ suffix_name }}.api.graphql import schema
 
 # Note: These imports will work once we set up proper dependencies
 # from {{ org_name }}.{{ solution_name }}.{{ prefix_name }}.{{ suffix_name }}.core.example_service_core import ExampleServiceCore
@@ -216,6 +220,9 @@ def create_app() -> FastAPI:
     # Add exception handlers
     _add_exception_handlers(app)
     
+    # Add GraphQL endpoint
+    _add_graphql_router(app, settings)
+    
     # Add routes (thin wrappers that delegate to business services)
     _add_routes(app)
     
@@ -223,7 +230,8 @@ def create_app() -> FastAPI:
         "FastAPI application created",
         title=settings.api_title,
         version=settings.api_version,
-        debug=settings.debug
+        debug=settings.debug,
+        graphql_enabled=True
     )
     
     return app
@@ -245,6 +253,32 @@ def _add_exception_handlers(app: FastAPI) -> None:
             status_code=exc.status_code,
             content={"error": exc.detail}
         )
+
+
+def _add_graphql_router(app: FastAPI, settings) -> None:
+    """Add GraphQL endpoint to the FastAPI application."""
+    
+    # Enable GraphiQL/Playground in development or when explicitly enabled
+    graphiql_enabled = (settings.debug or settings.graphql_playground_enabled) and settings.is_development
+    
+    # Create GraphQL router with configurable options
+    graphql_router = GraphQLRouter(
+        schema,
+        graphiql=graphiql_enabled,
+        path=settings.graphql_endpoint,
+    )
+    
+    # Include the GraphQL router (no prefix since path is already specified)
+    app.include_router(graphql_router, tags=["GraphQL"])
+    
+    logger.info(
+        "GraphQL endpoint configured", 
+        path=settings.graphql_endpoint,
+        graphiql_enabled=graphiql_enabled,
+        introspection_enabled=settings.graphql_introspection_enabled,
+        max_query_depth=settings.graphql_max_query_depth,
+        max_query_complexity=settings.graphql_max_query_complexity
+    )
 
 
 def _add_routes(app: FastAPI) -> None:

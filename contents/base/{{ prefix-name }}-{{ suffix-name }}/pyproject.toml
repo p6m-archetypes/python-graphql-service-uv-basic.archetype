@@ -1,11 +1,11 @@
 [project]
 name = "{{ prefix-name }}-{{ suffix-name }}"
 version = "0.1.0"
-description = "Modular Python REST {{ suffix-name }} following enterprise patterns"
+description = "Modular Python GraphQL {{ suffix-name }} following enterprise patterns"
 authors = [{name = "Your Name", email = "you@example.com"}]
 requires-python = ">=3.11"
 license = {text = "MIT"}
-keywords = ["rest", "fastapi", "microservice", "python", "async"]
+keywords = ["graphql", "fastapi", "microservice", "python", "async"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
