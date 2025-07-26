@@ -3,7 +3,7 @@ GraphQL mutation resolvers for {{ PrefixName }}{{ SuffixName }}.
 
 This module contains resolver functions for all GraphQL mutations,
 handling create, update, and delete operations with proper validation,
-error handling, and transaction management.
+error handling, transaction management, and real-time event broadcasting.
 """
 
 import uuid
@@ -33,6 +33,13 @@ from .context import ResolverContext
 from {{ org_name }}.{{ solution_name }}.{{ prefix_name }}.{{ suffix_name }}.persistence.entities.{{ prefix_name }}_entity import {{ PrefixName }}Entity
 from {{ org_name }}.{{ solution_name }}.{{ prefix_name }}.{{ suffix_name }}.api.models import ExampleDto
 
+# Import event bus for real-time subscriptions
+from ..subscriptions.event_bus import (
+    get_event_bus,
+    {{ PrefixName }}Event,
+    EventType
+)
+
 # Import core validation services
 try:
     from {{ org_name }}.{{ solution_name }}.{{ prefix_name }}.{{ suffix_name }}.core.services import ValidationService
@@ -48,7 +55,7 @@ class {{ PrefixName }}MutationResolver:
     
     This class contains all resolver methods for creating, updating, and deleting
     {{ prefix_name }} entities through GraphQL mutations, with comprehensive
-    validation, error handling, and transaction support.
+    validation, error handling, transaction support, and real-time event broadcasting.
     """
     
     @strawberry.mutation(description="Create a new {{ prefix_name }}")
@@ -100,6 +107,9 @@ class {{ PrefixName }}MutationResolver:
             
             # Convert to GraphQL type
             graphql_type = self._entity_to_graphql_type(created_entity)
+            
+            # 🚀 PUBLISH REAL-TIME EVENT
+            await self._publish_creation_event(created_entity, context)
             
             return {{ PrefixName }}Response(
                 success=True,
@@ -179,6 +189,12 @@ class {{ PrefixName }}MutationResolver:
                     {{ prefix_name }}=None
                 )
             
+            # Store previous values for event
+            previous_values = {
+                "name": existing_entity.name,
+                "status": getattr(existing_entity, 'status', None)
+            }
+            
             # Validate input data
             validation_result = await self._validate_update_input(input, existing_entity, context)
             if not validation_result["is_valid"]:
@@ -221,6 +237,9 @@ class {{ PrefixName }}MutationResolver:
             
             # Convert to GraphQL type
             graphql_type = self._entity_to_graphql_type(updated_entity)
+            
+            # 🚀 PUBLISH REAL-TIME EVENT
+            await self._publish_update_event(updated_entity, previous_values, context)
             
             return {{ PrefixName }}Response(
                 success=True,
@@ -309,6 +328,13 @@ class {{ PrefixName }}MutationResolver:
                     deleted_id=None
                 )
             
+            # Store entity data for event (before deletion)
+            entity_for_event = {
+                "id": str(existing_entity.id),
+                "name": existing_entity.name,
+                "status": getattr(existing_entity, 'status', None)
+            }
+            
             # Store name for cache clearing
             entity_name = existing_entity.name
             
@@ -325,6 +351,9 @@ class {{ PrefixName }}MutationResolver:
             # Clear DataLoader caches
             context.{{ prefix_name }}_loader.clear_by_id(str(entity_uuid))
             context.{{ prefix_name }}_loader.clear_by_name(entity_name)
+            
+            # 🚀 PUBLISH REAL-TIME EVENT
+            await self._publish_deletion_event(entity_for_event, context)
             
             return Delete{{ PrefixName }}Response(
                 success=True,
@@ -367,6 +396,7 @@ class {{ PrefixName }}MutationResolver:
         """
         context: ResolverContext = info.context
         results = []
+        created_entities = []
         
         try:
             # Process each entity creation
@@ -400,6 +430,9 @@ class {{ PrefixName }}MutationResolver:
                     entity_data = self._input_to_entity_data(create_input)
                     created_entity = await context.{{ prefix_name }}_repository.create(**entity_data)
                     
+                    # Track for batch event
+                    created_entities.append(created_entity)
+                    
                     # Convert to GraphQL type
                     graphql_type = self._entity_to_graphql_type(created_entity)
                     
@@ -421,6 +454,10 @@ class {{ PrefixName }}MutationResolver:
             # Clear all DataLoader caches after batch operation
             context.{{ prefix_name }}_loader.clear_all()
             
+            # 🚀 PUBLISH BATCH OPERATION EVENT
+            if created_entities:
+                await self._publish_batch_creation_event(created_entities, context)
+            
             return results
             
         except Exception as e:
@@ -432,7 +469,150 @@ class {{ PrefixName }}MutationResolver:
                 {{ prefix_name }}=None
             )]
     
-    # Helper methods
+    # 🚀 REAL-TIME EVENT PUBLISHING METHODS
+    
+    async def _publish_creation_event(
+        self, 
+        entity: {{ PrefixName }}Entity, 
+        context: ResolverContext
+    ):
+        """
+        Publish a creation event to the event bus.
+        
+        Args:
+            entity: The created entity
+            context: Resolver context
+        """
+        try:
+            event_bus = get_event_bus()
+            graphql_type = self._entity_to_graphql_type(entity)
+            
+            event = {{ PrefixName }}Event(
+                event_type=EventType.CREATED,
+                entity_id=str(entity.id),
+                entity_data=graphql_type,
+                user_id=context.user_id,
+                metadata={
+                    "operation": "create",
+                    "entity_name": entity.name
+                }
+            )
+            
+            await event_bus.publish(event)
+            print(f"📡 Published creation event for {{ prefix_name }} {entity.id}")
+            
+        except Exception as e:
+            print(f"❌ Failed to publish creation event: {e}")
+    
+    async def _publish_update_event(
+        self, 
+        entity: {{ PrefixName }}Entity, 
+        previous_values: Dict[str, Any],
+        context: ResolverContext
+    ):
+        """
+        Publish an update event to the event bus.
+        
+        Args:
+            entity: The updated entity
+            previous_values: Previous values before update
+            context: Resolver context
+        """
+        try:
+            event_bus = get_event_bus()
+            graphql_type = self._entity_to_graphql_type(entity)
+            
+            event = {{ PrefixName }}Event(
+                event_type=EventType.UPDATED,
+                entity_id=str(entity.id),
+                entity_data=graphql_type,
+                user_id=context.user_id,
+                metadata={
+                    "operation": "update",
+                    "entity_name": entity.name,
+                    "previous_values": previous_values
+                }
+            )
+            
+            await event_bus.publish(event)
+            print(f"📡 Published update event for {{ prefix_name }} {entity.id}")
+            
+        except Exception as e:
+            print(f"❌ Failed to publish update event: {e}")
+    
+    async def _publish_deletion_event(
+        self, 
+        entity_data: Dict[str, Any],
+        context: ResolverContext
+    ):
+        """
+        Publish a deletion event to the event bus.
+        
+        Args:
+            entity_data: Data of the deleted entity
+            context: Resolver context
+        """
+        try:
+            event_bus = get_event_bus()
+            
+            event = {{ PrefixName }}Event(
+                event_type=EventType.DELETED,
+                entity_id=entity_data["id"],
+                entity_data=None,  # No data for deleted entities
+                user_id=context.user_id,
+                metadata={
+                    "operation": "delete",
+                    "entity_name": entity_data["name"],
+                    "deleted_entity": entity_data
+                }
+            )
+            
+            await event_bus.publish(event)
+            print(f"📡 Published deletion event for {{ prefix_name }} {entity_data['id']}")
+            
+        except Exception as e:
+            print(f"❌ Failed to publish deletion event: {e}")
+    
+    async def _publish_batch_creation_event(
+        self, 
+        entities: List[{{ PrefixName }}Entity],
+        context: ResolverContext
+    ):
+        """
+        Publish a batch creation event to the event bus.
+        
+        Args:
+            entities: List of created entities
+            context: Resolver context
+        """
+        try:
+            event_bus = get_event_bus()
+            
+            # Publish individual creation events
+            for entity in entities:
+                await self._publish_creation_event(entity, context)
+            
+            # Also publish a batch operation event
+            event = {{ PrefixName }}Event(
+                event_type=EventType.BATCH_OPERATION,
+                entity_id=None,  # No specific entity ID for batch
+                entity_data=None,
+                user_id=context.user_id,
+                metadata={
+                    "operation": "batch_create",
+                    "entity_count": len(entities),
+                    "entity_ids": [str(e.id) for e in entities],
+                    "entity_names": [e.name for e in entities]
+                }
+            )
+            
+            await event_bus.publish(event)
+            print(f"📡 Published batch creation event for {len(entities)} {{ prefix_name }}s")
+            
+        except Exception as e:
+            print(f"❌ Failed to publish batch creation event: {e}")
+    
+    # Helper methods (unchanged from original implementation)
     
     async def _validate_create_input(
         self, 
