@@ -12,17 +12,23 @@ from typing import Optional, List
 from .types import (
     {{ PrefixName }}Type,
     {{ PrefixName }}Connection,
-    {{ PrefixName }}ConnectionArgs
+    {{ PrefixName }}ConnectionArgs,
+    {{ PrefixName }}Response,
+    Delete{{ PrefixName }}Response
 )
 
 # Import input types  
 from ..inputs import (
     {{ PrefixName }}Filter,
-    {{ PrefixName }}Sort
+    {{ PrefixName }}Sort,
+    Create{{ PrefixName }}Input,
+    Update{{ PrefixName }}Input,
+    CreateMultiple{{ PrefixName }}Input
 )
 
 # Import resolvers
 from ..resolvers.query_resolvers import {{ PrefixName }}QueryResolver
+from ..resolvers.mutation_resolvers import {{ PrefixName }}MutationResolver
 
 
 @strawberry.type
@@ -93,7 +99,8 @@ class Mutation:
     The root mutation type for the {{ PrefixName }}{{ SuffixName }} GraphQL API.
 
     This contains all available mutation operations that clients can perform
-    to modify data in the service. Mutations will be implemented in future tasks.
+    to modify data in the service. All mutations include comprehensive validation,
+    error handling, and transaction support.
     """
 
     @strawberry.mutation
@@ -104,15 +111,31 @@ class Mutation:
         """
         return "pong"
 
-    # TODO: Add mutation resolvers in future tasks
-    # create_{{ prefix_name }}: {{ PrefixName }}Response
-    # update_{{ prefix_name }}: {{ PrefixName }}Response  
-    # delete_{{ prefix_name }}: Delete{{ PrefixName }}Response
+    # {{ PrefixName }} mutations
+    create_{{ prefix_name }}: {{ PrefixName }}Response = strawberry.field(
+        resolver={{ PrefixName }}MutationResolver.create_{{ prefix_name }},
+        description="Create a new {{ prefix_name }} with validation and business rules"
+    )
+
+    update_{{ prefix_name }}: {{ PrefixName }}Response = strawberry.field(
+        resolver={{ PrefixName }}MutationResolver.update_{{ prefix_name }},
+        description="Update an existing {{ prefix_name }} with validation and conflict checking"
+    )
+
+    delete_{{ prefix_name }}: Delete{{ PrefixName }}Response = strawberry.field(
+        resolver={{ PrefixName }}MutationResolver.delete_{{ prefix_name }},
+        description="Delete a {{ prefix_name }} with confirmation and business rule validation"
+    )
+
+    create_multiple_{{ prefix_name }}s: List[{{ PrefixName }}Response] = strawberry.field(
+        resolver={{ PrefixName }}MutationResolver.create_multiple_{{ prefix_name }}s,
+        description="Create multiple {{ prefix_name }}s in a single batch operation"
+    )
 
 
 # Create the complete schema with query and mutation types
 schema = strawberry.Schema(
     query=Query, 
     mutation=Mutation,
-    description="{{ PrefixName }}{{ SuffixName }} GraphQL API - A modern GraphQL service with comprehensive querying capabilities"
+    description="{{ PrefixName }}{{ SuffixName }} GraphQL API - A modern GraphQL service with comprehensive querying and mutation capabilities"
 ) 

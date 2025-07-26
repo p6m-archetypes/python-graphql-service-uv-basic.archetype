@@ -7,11 +7,13 @@ and data access layers.
 """
 
 from .query_resolvers import {{ PrefixName }}QueryResolver
+from .mutation_resolvers import {{ PrefixName }}MutationResolver
 from .dataloader import {{ PrefixName }}DataLoader, create_dataloaders
 from .context import ResolverContext
 
 __all__ = [
     "{{ PrefixName }}QueryResolver",
+    "{{ PrefixName }}MutationResolver",
     "{{ PrefixName }}DataLoader", 
     "create_dataloaders",
     "ResolverContext"
