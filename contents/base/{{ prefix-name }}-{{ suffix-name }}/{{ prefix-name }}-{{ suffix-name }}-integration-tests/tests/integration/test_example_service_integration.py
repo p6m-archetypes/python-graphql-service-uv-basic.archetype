@@ -5,7 +5,7 @@ import os
 
 import pytest
 
-from ..utils.graphql_test_client import GraphQLTestClient, {{ PrefixName }}TestClient, GraphQLError
+from ..utils.graphql_test_client import GraphQLTestClient, {{ PrefixName }}GraphQLClient, GraphQLError
 # from ..utils.fixtures import TestDataFactory //TODO: Uncomment this when the fixtures are implemented
 
 class Test{{ PrefixName }}{{ SuffixName }}Integration:
@@ -58,7 +58,7 @@ def test_import_handling():
         host = os.getenv("API_HOST", "localhost")
         port = int(os.getenv("API_PORT", "8080"))
         base_url = f"http://{host}:{port}"
-        return {{ PrefixName }}TestClient(base_url)
+        return {{ PrefixName }}GraphQLClient(base_url)
 
     @pytest.mark.integration
     @pytest.mark.requires_docker
@@ -211,13 +211,12 @@ def test_import_handling():
             tasks = [ping_operation() for _ in range(5)]
             results = await asyncio.gather(*tasks)
             
-            # Assert all operations succeeded
             assert len(results) == 5
             for result in results:
                 assert result == "pong"
                 
-                 except Exception as e:
-             pytest.skip(f"GraphQL server not available: {e}")
+        except Exception as e:
+            pytest.skip(f"GraphQL server not available: {e}")
 
     # GraphQL CRUD Integration Tests (to be enabled when business logic is implemented)
     @pytest.mark.skip(reason="Waiting for business logic implementation")

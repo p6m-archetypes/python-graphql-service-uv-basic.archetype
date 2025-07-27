@@ -239,9 +239,9 @@ class {{ PrefixName }}TestOperations:
         """
 
 
-class {{ PrefixName }}TestClient:
+class {{ PrefixName }}GraphQLClient:
     """
-    High-level test client for {{ PrefixName }}{{ SuffixName }} GraphQL operations.
+    High-level GraphQL client for {{ PrefixName }}{{ SuffixName }} GraphQL operations.
     
     Provides convenient methods for common test operations with proper typing
     and error handling.

@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, MagicMock
 import httpx
 import pytest
 
-from ..utils.graphql_test_client import GraphQLTestClient, {{ PrefixName }}TestClient, GraphQLError
+from ..utils.graphql_test_client import GraphQLTestClient, {{ PrefixName }}GraphQLClient, GraphQLError
 
 
 class TestGraphQLConnectivity:
@@ -57,7 +57,7 @@ class TestGraphQLConnectivity:
         port = int(os.getenv("API_PORT", "8080"))
         base_url = f"http://{host}:{port}"
         
-        client = {{ PrefixName }}TestClient(base_url)
+        client = {{ PrefixName }}GraphQLClient(base_url)
         
         try:
             result = await client.ping()
@@ -129,7 +129,7 @@ class TestGraphQLConnectivity:
         port = int(os.getenv("API_PORT", "8080"))
         base_url = f"http://{host}:{port}"
         
-        client = {{ PrefixName }}TestClient(base_url)
+        client = {{ PrefixName }}GraphQLClient(base_url)
         
         try:
             schema = await client.introspect_schema()
@@ -288,7 +288,7 @@ async def test_integration_with_graphql():
     base_url = f"http://{host}:{port}"
     
     try:
-        client = {{ PrefixName }}TestClient(base_url)
+        client = {{ PrefixName }}GraphQLClient(base_url)
         
         # Test basic GraphQL functionality
         ping_result = await client.ping()

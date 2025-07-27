@@ -10,7 +10,7 @@ import pytest
 import asyncio
 from typing import AsyncGenerator
 
-from tests.utils.graphql_test_client import GraphQLTestClient, {{ PrefixName }}TestClient
+from tests.utils.graphql_test_client import GraphQLTestClient, {{ PrefixName }}GraphQLClient
 
 
 @pytest.fixture(scope="session")
@@ -53,13 +53,13 @@ async def graphql_client(base_url) -> AsyncGenerator[GraphQLTestClient, None]:
 
 
 @pytest.fixture
-async def {{ prefix_name }}_test_client(base_url) -> AsyncGenerator[{{ PrefixName }}TestClient, None]:
+async def {{ prefix_name }}_test_client(base_url) -> AsyncGenerator[{{ PrefixName }}GraphQLClient, None]:
     """
     Provide a {{ PrefixName }}{{ SuffixName }}-specific test client for integration tests.
     
     This fixture includes pre-built queries and mutations for common test operations.
     """
-    client = {{ PrefixName }}TestClient(base_url)
+    client = {{ PrefixName }}GraphQLClient(base_url)
     yield client
     # No cleanup needed for HTTP client
 
