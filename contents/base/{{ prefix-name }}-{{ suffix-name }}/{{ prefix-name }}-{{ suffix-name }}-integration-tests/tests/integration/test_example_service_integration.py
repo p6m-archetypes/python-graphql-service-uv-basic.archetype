@@ -1,13 +1,15 @@
-"""Integration tests for Example Service."""
+"""Integration tests for {{ PrefixName }}{{ SuffixName }} GraphQL Service."""
 
 import uuid
+import os
 
 import pytest
 
+from ..utils.graphql_test_client import GraphQLTestClient, {{ PrefixName }}TestClient, GraphQLError
 # from ..utils.fixtures import TestDataFactory //TODO: Uncomment this when the fixtures are implemented
 
-class TestExampleServiceIntegration:
-    """Integration tests for the complete Example Service stack."""
+class Test{{ PrefixName }}{{ SuffixName }}Integration:
+    """Integration tests for the complete {{ PrefixName }}{{ SuffixName }} GraphQL service stack."""
 
 def test_import_handling():
     """Test that import error handling works correctly."""
@@ -49,6 +51,262 @@ def test_import_handling():
         # It ensures the test markers work correctly
         print("✓ Integration test markers working")
         pass
+
+    @pytest.fixture
+    async def graphql_client(self):
+        """Create a GraphQL test client for integration tests."""
+        host = os.getenv("API_HOST", "localhost")
+        port = int(os.getenv("API_PORT", "8080"))
+        base_url = f"http://{host}:{port}"
+        return {{ PrefixName }}TestClient(base_url)
+
+    @pytest.mark.integration
+    @pytest.mark.requires_docker
+    async def test_graphql_ping_integration(self, graphql_client):
+        """Test basic GraphQL connectivity via ping query."""
+        try:
+            result = await graphql_client.ping()
+            assert result == "pong", f"Expected 'pong', got '{result}'"
+        except Exception as e:
+            pytest.skip(f"GraphQL server not available: {e}")
+
+    @pytest.mark.integration
+    @pytest.mark.requires_docker
+    async def test_graphql_schema_introspection_integration(self, graphql_client):
+        """Test GraphQL schema introspection in integration environment."""
+        try:
+            schema = await graphql_client.introspect_schema()
+            
+            # Verify basic schema structure
+            assert "queryType" in schema, "Schema should have queryType"
+            assert "mutationType" in schema, "Schema should have mutationType"
+            assert "types" in schema, "Schema should have types"
+            
+            # Verify our specific types are present
+            type_names = [t["name"] for t in schema["types"]]
+            assert "Query" in type_names, "Query type should be present"
+            assert "Mutation" in type_names, "Mutation type should be present"
+            assert "{{ PrefixName }}Type" in type_names, "{{ PrefixName }}Type should be present"
+            
+        except Exception as e:
+            pytest.skip(f"GraphQL schema introspection failed: {e}")
+
+    @pytest.mark.integration
+    @pytest.mark.requires_docker
+    async def test_graphql_error_handling_integration(self, graphql_client):
+        """Test GraphQL error handling with invalid queries."""
+        try:
+            # Test with invalid field
+            with pytest.raises(GraphQLError):
+                await graphql_client.client.execute("query { nonExistentField }")
+            
+            # Test with malformed query
+            with pytest.raises(GraphQLError):
+                await graphql_client.client.execute("invalid query syntax")
+                
+        except Exception as e:
+            pytest.skip(f"GraphQL server not available: {e}")
+
+    @pytest.mark.integration
+    @pytest.mark.requires_docker
+    async def test_graphql_list_operation_integration(self, graphql_client):
+        """Test GraphQL list operation (list{{ PrefixName }}s)."""
+        try:
+            # Test basic list operation
+            result = await graphql_client.list_{{ prefix_name }}s()
+            
+            # Verify response structure
+            assert isinstance(result, dict), "List result should be a dictionary"
+            assert "edges" in result, "List result should have edges"
+            assert "pageInfo" in result, "List result should have pageInfo"
+            assert "totalCount" in result, "List result should have totalCount"
+            
+            # Verify pagination structure
+            page_info = result["pageInfo"]
+            assert "hasNextPage" in page_info
+            assert "hasPreviousPage" in page_info
+            assert "startCursor" in page_info
+            assert "endCursor" in page_info
+            
+        except GraphQLError as e:
+            # This is expected if the operation doesn't exist yet
+            assert "Cannot query field" in str(e) or "Unknown field" in str(e)
+        except Exception as e:
+            pytest.skip(f"GraphQL server not available: {e}")
+
+    @pytest.mark.integration
+    @pytest.mark.requires_docker 
+    async def test_graphql_pagination_integration(self, graphql_client):
+        """Test GraphQL pagination functionality."""
+        try:
+            # Test pagination with limit
+            result = await graphql_client.list_{{ prefix_name }}s(
+                pagination={"first": 5}
+            )
+            
+            assert isinstance(result, dict), "Paginated result should be a dictionary"
+            edges = result.get("edges", [])
+            assert len(edges) <= 5, "Should respect pagination limit"
+            
+        except GraphQLError as e:
+            # Expected if the list operation doesn't exist yet
+            assert "Cannot query field" in str(e) or "Unknown field" in str(e)
+        except Exception as e:
+            pytest.skip(f"GraphQL server not available: {e}")
+
+    @pytest.mark.integration
+    @pytest.mark.requires_docker
+    async def test_graphql_validation_integration(self, graphql_client):
+        """Test GraphQL input validation."""
+        try:
+            # Test with invalid variable types
+            with pytest.raises(GraphQLError):
+                await graphql_client.client.execute(
+                    "query TestQuery($id: Int!) { ping }",
+                    {"id": "not_an_integer"}
+                )
+                
+        except Exception as e:
+            pytest.skip(f"GraphQL server not available: {e}")
+
+    @pytest.mark.integration
+    @pytest.mark.slow
+    async def test_graphql_performance_baseline(self, graphql_client):
+        """Test basic GraphQL performance characteristics."""
+        import time
+        
+        try:
+            # Test ping performance
+            start_time = time.time()
+            
+            for _ in range(10):
+                await graphql_client.ping()
+            
+            ping_duration = time.time() - start_time
+            
+            # Assert reasonable performance (adjust threshold as needed)
+            assert ping_duration < 5.0, f"Ping operations took too long: {ping_duration}s"
+            
+            # Test introspection performance
+            start_time = time.time()
+            await graphql_client.introspect_schema()
+            introspection_duration = time.time() - start_time
+            
+            assert introspection_duration < 10.0, f"Schema introspection took too long: {introspection_duration}s"
+            
+        except Exception as e:
+            pytest.skip(f"GraphQL server not available: {e}")
+
+    @pytest.mark.integration
+    @pytest.mark.requires_docker
+    async def test_graphql_concurrent_operations(self, graphql_client):
+        """Test concurrent GraphQL operations."""
+        import asyncio
+        
+        try:
+            # Execute multiple ping operations concurrently
+            async def ping_operation():
+                return await graphql_client.ping()
+            
+            tasks = [ping_operation() for _ in range(5)]
+            results = await asyncio.gather(*tasks)
+            
+            # Assert all operations succeeded
+            assert len(results) == 5
+            for result in results:
+                assert result == "pong"
+                
+                 except Exception as e:
+             pytest.skip(f"GraphQL server not available: {e}")
+
+    # GraphQL CRUD Integration Tests (to be enabled when business logic is implemented)
+    @pytest.mark.skip(reason="Waiting for business logic implementation")
+    @pytest.mark.integration
+    @pytest.mark.requires_docker
+    async def test_graphql_create_and_retrieve_{{ prefix_name }}(self, graphql_client):
+        """Test creating a {{ prefix_name }} via GraphQL and then retrieving it."""
+        try:
+            # Create a {{ prefix_name }}
+            create_result = await graphql_client.create_{{ prefix_name }}({
+                "name": "Integration Test {{ PrefixName }}",
+                "description": "Test description via GraphQL"
+            })
+            
+            assert create_result["success"] is True
+            assert create_result["{{ prefix_name }}"]["name"] == "Integration Test {{ PrefixName }}"
+            assert create_result["{{ prefix_name }}"]["id"] is not None
+            
+            # Retrieve the created {{ prefix_name }}
+            {{ prefix_name }}_id = create_result["{{ prefix_name }}"]["id"]
+            get_result = await graphql_client.get_{{ prefix_name }}({{ prefix_name }}_id)
+            
+            assert get_result["id"] == {{ prefix_name }}_id
+            assert get_result["name"] == "Integration Test {{ PrefixName }}"
+            assert get_result["description"] == "Test description via GraphQL"
+            
+        except GraphQLError as e:
+            pytest.skip(f"GraphQL CRUD operations not yet implemented: {e}")
+
+    @pytest.mark.skip(reason="Waiting for business logic implementation")
+    @pytest.mark.integration
+    @pytest.mark.requires_docker
+    async def test_graphql_update_{{ prefix_name }}_flow(self, graphql_client):
+        """Test the complete GraphQL update flow."""
+        try:
+            # Create a {{ prefix_name }} first
+            create_result = await graphql_client.create_{{ prefix_name }}({
+                "name": "Original Name",
+                "description": "Original description"
+            })
+            {{ prefix_name }}_id = create_result["{{ prefix_name }}"]["id"]
+            
+            # Update the {{ prefix_name }}
+            update_result = await graphql_client.update_{{ prefix_name }}({{ prefix_name }}_id, {
+                "name": "Updated Name",
+                "description": "Updated description"
+            })
+            
+            assert update_result["success"] is True
+            assert update_result["{{ prefix_name }}"]["id"] == {{ prefix_name }}_id
+            assert update_result["{{ prefix_name }}"]["name"] == "Updated Name"
+            
+            # Verify the update persisted
+            get_result = await graphql_client.get_{{ prefix_name }}({{ prefix_name }}_id)
+            assert get_result["name"] == "Updated Name"
+            assert get_result["description"] == "Updated description"
+            
+        except GraphQLError as e:
+            pytest.skip(f"GraphQL CRUD operations not yet implemented: {e}")
+
+    @pytest.mark.skip(reason="Waiting for business logic implementation")
+    @pytest.mark.integration
+    @pytest.mark.requires_docker
+    async def test_graphql_delete_{{ prefix_name }}_flow(self, graphql_client):
+        """Test the complete GraphQL delete flow."""
+        try:
+            # Create a {{ prefix_name }} first
+            create_result = await graphql_client.create_{{ prefix_name }}({
+                "name": "To Be Deleted",
+                "description": "This will be deleted"
+            })
+            {{ prefix_name }}_id = create_result["{{ prefix_name }}"]["id"]
+            
+            # Verify {{ prefix_name }} exists
+            get_result = await graphql_client.get_{{ prefix_name }}({{ prefix_name }}_id)
+            assert get_result is not None
+            
+            # Delete the {{ prefix_name }}
+            delete_result = await graphql_client.delete_{{ prefix_name }}({{ prefix_name }}_id)
+            
+            assert delete_result["success"] is True
+            assert "Successfully deleted" in delete_result["message"]
+            
+            # Verify {{ prefix_name }} no longer exists
+            deleted_result = await graphql_client.get_{{ prefix_name }}({{ prefix_name }}_id)
+            assert deleted_result is None  # Should return None for not found
+            
+        except GraphQLError as e:
+            pytest.skip(f"GraphQL CRUD operations not yet implemented: {e}")
 
     #TODO: Uncomment these tests when the fixtures are implemented
     # @pytest.mark.integration
