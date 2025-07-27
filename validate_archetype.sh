@@ -11,7 +11,7 @@ NC='\033[0m' # No Color
 # Configuration
 TEST_SERVICE_NAME="test-validation-service"
 TEST_ORG="test.example"
-TEST_SOLUTION="test-python-rest-service"
+TEST_SOLUTION="test-python-graphql-service"
 TEST_PREFIX="test"
 TEST_SUFFIX="service"
 MAX_STARTUP_TIME=120 # 2 minutes in seconds
@@ -112,7 +112,7 @@ generate_test_service() {
         cat > test_answers.yaml << EOF
 # Fallback answer file for archetype validation testing
 project: "$TEST_SERVICE_NAME"
-description: "Test Python REST service with UV for validation testing"
+description: "Test Python GraphQL service with UV for validation testing"
 version: "1.0.0"
 author_full: "Validation Test Suite"
 prefix-name: "$TEST_PREFIX"
@@ -172,11 +172,11 @@ validate_template_substitution() {
         error_details="${error_details}- Unreplaced template variables ($unreplaced found)\n"
     fi
     
-    # Check for gRPC references that should have been replaced 
-    local grpc_refs=$(grep -r "grpc" . --exclude-dir=.git --exclude="*.pyc" --exclude-dir=.venv 2>/dev/null | grep -v "# REST replaces gRPC" | wc -l)
+    # Check for unexpected gRPC references (allow GraphQL terms)
+    local grpc_refs=$(grep -r "grpc" . --exclude-dir=.git --exclude="*.pyc" --exclude-dir=.venv 2>/dev/null | grep -v "graphql" | grep -v "# GraphQL uses protocols" | wc -l)
     if [ "$grpc_refs" -gt 0 ]; then
-        log "${RED}Found $grpc_refs unexpected gRPC references:${NC}"
-        grep -r "grpc" . --exclude-dir=.git --exclude="*.pyc" --exclude-dir=.venv 2>/dev/null | grep -v "# REST replaces gRPC" | head -3
+        log "${RED}Found $grpc_refs unexpected gRPC references (excluding GraphQL terms):${NC}"
+        grep -r "grpc" . --exclude-dir=.git --exclude="*.pyc" --exclude-dir=.venv 2>/dev/null | grep -v "graphql" | grep -v "# GraphQL uses protocols" | head -3
         if [ "$grpc_refs" -gt 3 ]; then
             log "${YELLOW}... and $((grpc_refs - 3)) more${NC}"
         fi
@@ -184,24 +184,24 @@ validate_template_substitution() {
         error_details="${error_details}- gRPC references still present ($grpc_refs found)\n"
     fi
     
-    # Check for proto references that should have been replaced
-    local proto_refs=$(grep -r "proto" . --exclude-dir=.git --exclude="*.pyc" --exclude-dir=.venv 2>/dev/null | grep -v "# proto files not needed" | wc -l)
+    # Check for unexpected protobuf references (allow protocol terms)
+    local proto_refs=$(grep -r "proto" . --exclude-dir=.git --exclude="*.pyc" --exclude-dir=.venv 2>/dev/null | grep -v "protocol" | grep -v "# GraphQL protocols allowed" | wc -l)
     if [ "$proto_refs" -gt 0 ]; then
-        log "${RED}Found $proto_refs unexpected proto references:${NC}"
-        grep -r "proto" . --exclude-dir=.git --exclude="*.pyc" --exclude-dir=.venv 2>/dev/null | grep -v "# proto files not needed" | head -3
+        log "${RED}Found $proto_refs unexpected protobuf references (excluding protocol terms):${NC}"
+        grep -r "proto" . --exclude-dir=.git --exclude="*.pyc" --exclude-dir=.venv 2>/dev/null | grep -v "protocol" | grep -v "# GraphQL protocols allowed" | head -3
         if [ "$proto_refs" -gt 3 ]; then
             log "${YELLOW}... and $((proto_refs - 3)) more${NC}"
         fi
         template_issues=1
-        error_details="${error_details}- Proto references still present ($proto_refs found)\n"
+        error_details="${error_details}- Protobuf references still present ($proto_refs found)\n"
     fi
     
-    # Check for proper REST endpoint patterns
-    local rest_endpoints=$(grep -r "/api/v1/" . --exclude-dir=.git --exclude="*.pyc" 2>/dev/null | wc -l)
-    if [ "$rest_endpoints" -eq 0 ]; then
-        log "${RED}Missing expected REST API endpoint patterns${NC}"
+    # Check for proper GraphQL endpoint patterns
+    local graphql_endpoints=$(grep -r "/graphql\|strawberry\|GraphQL" . --exclude-dir=.git --exclude="*.pyc" 2>/dev/null | wc -l)
+    if [ "$graphql_endpoints" -eq 0 ]; then
+        log "${RED}Missing expected GraphQL endpoint patterns${NC}"
         template_issues=1
-        error_details="${error_details}- No REST API endpoints found\n"
+        error_details="${error_details}- No GraphQL endpoints found\n"
     fi
     
     # Report results with proper logic (0 = success, 1 = failure)
@@ -223,24 +223,10 @@ test_uv_sync() {
     
     local sync_failed=0
     
-    # First sync from root to build and install all local packages
-    log "${YELLOW}Syncing root project to build local packages...${NC}"
-    if uv sync >> "$VALIDATION_LOG" 2>&1; then
-        log "${GREEN}  ✅ Root project sync successful${NC}"
-    else
-        log "${RED}  ❌ Root project sync failed${NC}"
-        sync_failed=1
-    fi
-    
-    # Then sync individual packages (which should now work since local deps are available)
+    # Find all pyproject.toml files and sync each package
     while IFS= read -r -d '' pyproject_file; do
         package_dir=$(dirname "$pyproject_file")
         package_name=$(basename "$package_dir")
-        
-        # Skip the root project as we already synced it
-        if [ "$package_name" = "$TEST_PREFIX-$TEST_SUFFIX" ]; then
-            continue
-        fi
         
         log "${YELLOW}Syncing package: $package_name${NC}"
         
@@ -252,12 +238,7 @@ test_uv_sync() {
         fi
     done < <(find . -name "pyproject.toml" -print0)
     
-    if [ $sync_failed -eq 0 ]; then
-        test_result 0 "UV sync on all packages"
-    else
-        log "${YELLOW}Some packages failed to sync due to dependency resolution, but will continue validation...${NC}"
-        test_result 1 "UV sync on all packages (some failures expected due to package interdependencies)"
-    fi
+    test_result $sync_failed "UV sync on all packages"
 }
 
 # Validate generated lock files are clean
@@ -357,24 +338,26 @@ test_docker_stack() {
     fi
 }
 
-# Test REST service connectivity
+# Test GraphQL service connectivity
 test_service_connectivity() {
-    log "\n${BLUE}Testing REST service connectivity...${NC}"
+    log "\n${BLUE}Testing GraphQL service connectivity...${NC}"
     
     cd "$TEMP_DIR/$TEST_SERVICE_NAME/$TEST_PREFIX-$TEST_SUFFIX"
     
-    # Test REST API root endpoint
-    if curl -s --connect-timeout 5 http://localhost:8080/ | grep -q "REST API" 2>/dev/null; then
-        test_result 0 "REST API root endpoint accessible"
+    # Test GraphQL endpoint with introspection query
+    if curl -s --connect-timeout 5 -X POST http://localhost:8080/graphql \
+        -H "Content-Type: application/json" \
+        -d '{"query": "{ __schema { queryType { name } } }"}' | grep -q "queryType" 2>/dev/null; then
+        test_result 0 "GraphQL endpoint accessible and responding"
     else
-        test_result 1 "REST API root endpoint not accessible"
+        test_result 1 "GraphQL endpoint not accessible or not responding"
     fi
     
-    # Test REST API health endpoint
+    # Test health endpoint
     if curl -s --connect-timeout 5 http://localhost:8080/health | grep -q "healthy" 2>/dev/null; then
-        test_result 0 "REST API health endpoint accessible"
+        test_result 0 "Health endpoint accessible"
     else
-        test_result 1 "REST API health endpoint not accessible"
+        test_result 1 "Health endpoint not accessible"
     fi
     
     # Test OpenAPI docs endpoint
@@ -399,55 +382,26 @@ test_service_connectivity() {
     fi
 }
 
-# Test REST API CRUD operations
-test_rest_api_crud() {
-    log "\n${BLUE}Testing REST API CRUD operations...${NC}"
+# Test GraphQL operations
+test_graphql_operations() {
+    log "\n${BLUE}Testing GraphQL operations...${NC}"
     
-    # Test GET /api/v1/tests (list endpoint)
-    if curl -s --connect-timeout 5 "http://localhost:8000/api/v1/tests" | grep -q "\[\]" 2>/dev/null; then
-        test_result 0 "REST API list endpoint returns empty array"
+    # Test GraphQL ping query
+    if curl -s --connect-timeout 5 -X POST http://localhost:8080/graphql \
+        -H "Content-Type: application/json" \
+        -d '{"query": "{ ping }"}' | grep -q "pong" 2>/dev/null; then
+        test_result 0 "GraphQL ping query working"
     else
-        test_result 1 "REST API list endpoint not working properly"
+        test_result 1 "GraphQL ping query not working properly"
     fi
     
-    # Test POST /api/v1/tests (create endpoint)
-    local create_response=$(curl -s --connect-timeout 5 \
-        -X POST "http://localhost:8000/api/v1/tests" \
+    # Test GraphQL schema introspection
+    if curl -s --connect-timeout 5 -X POST http://localhost:8080/graphql \
         -H "Content-Type: application/json" \
-        -d '{"name": "test-item", "description": "Test item for validation"}' 2>/dev/null)
-    
-    if echo "$create_response" | grep -q "test-item" 2>/dev/null; then
-        test_result 0 "REST API create endpoint working"
-        # Extract ID for further tests
-        local test_id=$(echo "$create_response" | grep -o '"id":"[^"]*"' | cut -d'"' -f4)
-        
-        if [ -n "$test_id" ]; then
-            # Test GET /api/v1/tests/{id} (get by ID endpoint)
-            if curl -s --connect-timeout 5 "http://localhost:8000/api/v1/tests/$test_id" | grep -q "test-item" 2>/dev/null; then
-                test_result 0 "REST API get by ID endpoint working"
-            else
-                test_result 1 "REST API get by ID endpoint not working"
-            fi
-            
-            # Test PUT /api/v1/tests/{id} (update endpoint)
-            if curl -s --connect-timeout 5 \
-                -X PUT "http://localhost:8000/api/v1/tests/$test_id" \
-                -H "Content-Type: application/json" \
-                -d '{"name": "updated-test-item", "description": "Updated test item"}' | grep -q "updated-test-item" 2>/dev/null; then
-                test_result 0 "REST API update endpoint working"
-            else
-                test_result 1 "REST API update endpoint not working"
-            fi
-            
-            # Test DELETE /api/v1/tests/{id} (delete endpoint)
-            if curl -s --connect-timeout 5 -X DELETE "http://localhost:8000/api/v1/tests/$test_id" | grep -q "deleted" 2>/dev/null; then
-                test_result 0 "REST API delete endpoint working"
-            else
-                test_result 1 "REST API delete endpoint not working"
-            fi
-        fi
+        -d '{"query": "{ __schema { types { name } } }"}' | grep -q "types" 2>/dev/null; then
+        test_result 0 "GraphQL schema introspection working"
     else
-        test_result 1 "REST API create endpoint not working properly"
+        test_result 1 "GraphQL schema introspection not working"
     fi
 }
 
@@ -495,22 +449,24 @@ run_integration_tests() {
         mkdir -p scripts
         cat > scripts/run-integration-tests.sh << 'EOF'
 #!/bin/bash
-# Basic integration test for REST service
-echo "Running basic REST service integration test..."
+# Basic integration test for GraphQL service
+echo "Running basic GraphQL service integration test..."
 
 # Test service is responding
-if curl -s --connect-timeout 5 http://localhost:8000/health > /dev/null; then
+if curl -s --connect-timeout 5 http://localhost:8080/health > /dev/null; then
     echo "✅ Service health check passed"
 else
     echo "❌ Service health check failed"
     exit 1
 fi
 
-# Test API endpoint
-if curl -s --connect-timeout 5 http://localhost:8000/api/v1/tests > /dev/null; then
-    echo "✅ API endpoint accessible"
+# Test GraphQL endpoint
+if curl -s --connect-timeout 5 -X POST http://localhost:8080/graphql \
+    -H "Content-Type: application/json" \
+    -d '{"query": "{ ping }"}' | grep -q "pong" > /dev/null; then
+    echo "✅ GraphQL endpoint accessible"
 else
-    echo "❌ API endpoint not accessible"
+    echo "❌ GraphQL endpoint not accessible"
     exit 1
 fi
 
@@ -530,7 +486,7 @@ EOF
 # Main validation workflow
 main() {
     log "${BLUE}========================================${NC}"
-    log "${BLUE}Python REST Service Archetype Validation${NC}"
+    log "${BLUE}Python GraphQL Service Archetype Validation${NC}"
     log "${BLUE}========================================${NC}"
     log "Validation log: $VALIDATION_LOG"
     log "Temp directory: $TEMP_DIR"
@@ -552,11 +508,11 @@ main() {
     log "\n${BLUE}Starting end-to-end timing measurement...${NC}"
     local e2e_start_time=$(date +%s)
     
-    test_uv_sync  # Don't exit on UV sync failures - some packages may have dependency issues
+    test_uv_sync  # Allow individual package sync failures for local dependency packages
     validate_lock_files || exit 1
     test_docker_stack || exit 1
     test_service_connectivity || exit 1
-    test_rest_api_crud || exit 1
+    test_graphql_operations || exit 1
     test_monitoring || exit 1
     run_integration_tests || exit 1
     
@@ -585,7 +541,7 @@ main() {
     log "End-to-end workflow time: $e2e_total_time seconds"
     
     if [ $TESTS_FAILED -eq 0 ]; then
-        log "\n${GREEN}🎉 All validation tests passed! REST archetype is ready for release.${NC}"
+        log "\n${GREEN}🎉 All validation tests passed! GraphQL archetype is ready for release.${NC}"
         log "${YELLOW}Generated service directory preserved at: $TEMP_DIR/$TEST_SERVICE_NAME/$TEST_PREFIX-$TEST_SUFFIX${NC}"
         return 0
     else
