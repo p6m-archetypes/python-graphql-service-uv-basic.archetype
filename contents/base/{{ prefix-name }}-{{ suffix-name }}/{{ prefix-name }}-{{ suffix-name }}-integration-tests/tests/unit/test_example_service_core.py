@@ -13,6 +13,47 @@ import pytest
 # from ..utils.fixtures import TestDataFactory  # TODO: Uncomment this when the fixtures are implemented
 
 
+class TestDataFactory:
+    """Factory for creating test data objects."""
+    
+    @staticmethod
+    def create_example_dto(name: str = "Test Example", example_id: str = None):
+        """Create an ExampleDto for testing."""
+        # Mock DTO object
+        return type('ExampleDto', (), {
+            'id': example_id,
+            'name': name
+        })()
+    
+    @staticmethod
+    def create_get_examples_request(start_page: int = 0, page_size: int = 10):
+        """Create a GetExamplesRequest for testing."""
+        return type('GetExamplesRequest', (), {
+            'start_page': start_page,
+            'page_size': page_size
+        })()
+    
+    @staticmethod
+    def create_get_example_request(example_id: str):
+        """Create a GetExampleRequest for testing."""
+        return type('GetExampleRequest', (), {
+            'id': example_id
+        })()
+    
+    @staticmethod
+    def create_delete_example_request(example_id: str):
+        """Create a DeleteExampleRequest for testing."""
+        return type('DeleteExampleRequest', (), {
+            'id': example_id
+        })()
+
+
+@pytest.fixture
+def test_data_factory():
+    """Provide access to the TestDataFactory."""
+    return TestDataFactory
+
+
 class TestExampleServiceCore:
     """Unit tests for ExampleServiceCore business logic."""
 
@@ -73,10 +114,10 @@ class TestExampleServiceCore:
         example_service_core.create_example.assert_called_once_with(example_dto)
 
     @pytest.mark.unit
-    async def test_create_example_with_database_constraint_violation(self, example_service_core, mock_repository):
+    async def test_create_example_with_database_constraint_violation(self, example_service_core, mock_repository, test_data_factory):
         """Test example creation with database constraint violation."""
         # Arrange
-        example_dto = TestDataFactory.create_example_dto("Test Example")
+        example_dto = test_data_factory.create_example_dto("Test Example")
         mock_repository.save.side_effect = Exception("constraint violation")
         
         # Mock the service to raise the appropriate exception
