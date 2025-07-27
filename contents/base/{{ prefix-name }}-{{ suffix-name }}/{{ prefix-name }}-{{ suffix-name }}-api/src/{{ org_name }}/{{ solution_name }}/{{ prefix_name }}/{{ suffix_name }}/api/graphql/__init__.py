@@ -1,20 +1,11 @@
 """
 GraphQL API package for {{ PrefixName }}{{ SuffixName }}.
 
-This package provides a complete GraphQL API implementation including:
-- Schema definitions and types
-- Query and mutation resolvers  
-- Input type definitions
-- GraphQL endpoint integration
-
-The main entry point is the `schema` object which can be used with
-FastAPI's GraphQL router or other GraphQL server implementations.
+This package contains pure GraphQL schema definitions including types,
+inputs, and base schema structure without any resolver implementations.
+All resolvers are implemented in the server package.
 """
 
-from .schema import schema, Query, Mutation
+from .schema.base import create_pure_schema
 
-__all__ = [
-    "schema",
-    "Query",
-    "Mutation"
-]
+__all__ = ["create_pure_schema"]

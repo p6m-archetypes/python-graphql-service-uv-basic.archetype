@@ -22,14 +22,14 @@ from strawberry.subscriptions import GRAPHQL_TRANSPORT_WS_PROTOCOL
 from .config.settings import get_settings
 from .middleware.auth import get_auth_service
 
-# Import GraphQL schema
-from {{ org_name }}.{{ solution_name }}.{{ prefix_name }}.{{ suffix_name }}.api.graphql import schema
+# Import GraphQL schema from local server package
+from .graphql import create_schema
 
-# Import subscription event bus
-from {{ org_name }}.{{ solution_name }}.{{ prefix_name }}.{{ suffix_name }}.api.graphql.subscriptions.event_bus import (
-    initialize_event_bus,
-    shutdown_event_bus
-)
+# Import subscription event bus (for now, comment out until we restructure event bus)
+# from .graphql.subscriptions.event_bus import (
+#     initialize_event_bus,
+#     shutdown_event_bus
+# )
 
 # Note: These imports will work once we set up proper dependencies
 # from {{ org_name }}.{{ solution_name }}.{{ prefix_name }}.{{ suffix_name }}.core.example_service_core import ExampleServiceCore
@@ -126,7 +126,7 @@ def _add_graphql_router(app: FastAPI, settings) -> None:
 
     # Create GraphQL router with WebSocket subscription support
     graphql_router = GraphQLRouter(
-        schema,
+        create_schema(),
         graphiql=graphiql_enabled,
         path=settings.graphql_endpoint,
         subscription_protocols=[GRAPHQL_TRANSPORT_WS_PROTOCOL],
