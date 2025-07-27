@@ -72,7 +72,7 @@ class {{ PrefixName }}SubscriptionResolver:
             filter_criteria=filter_criteria
         )
         
-        logger.info(f"Client subscribed to all {{ prefix_name }} changes (subscription: {subscription_id})")
+        logger.info("Client subscribed to all {{ prefix_name }} changes", subscription_id=subscription_id)
         
         try:
             async for bus_event in event_generator:
@@ -84,15 +84,15 @@ class {{ PrefixName }}SubscriptionResolver:
                     yield change_event
                 
         except asyncio.CancelledError:
-            logger.info(f"Subscription {subscription_id} cancelled by client")
+            logger.info("Subscription cancelled by client", subscription_id=subscription_id)
             raise
         except Exception as e:
-            logger.error(f"Error in subscription {subscription_id}: {e}")
+            logger.error("Error in subscription", subscription_id=subscription_id, error=str(e))
             # Optionally yield error event
             yield self._create_error_event(str(e))
         finally:
             # Cleanup handled by event bus
-            logger.debug(f"Subscription {subscription_id} cleanup complete")
+            logger.debug("Subscription cleanup complete", subscription_id=subscription_id)
     
     @strawberry.subscription(description="Subscribe to {{ prefix_name }} creation events")
     async def {{ prefix_name }}_created(
@@ -125,7 +125,7 @@ class {{ PrefixName }}SubscriptionResolver:
             filter_criteria=filter_criteria
         )
         
-        logger.info(f"Client subscribed to {{ prefix_name }} creation events (subscription: {subscription_id})")
+        logger.info("Client subscribed to {{ prefix_name }} creation events", subscription_id=subscription_id)
         
         try:
             async for bus_event in event_generator:
@@ -136,10 +136,10 @@ class {{ PrefixName }}SubscriptionResolver:
                     yield change_event
                     
         except asyncio.CancelledError:
-            logger.info(f"Creation subscription {subscription_id} cancelled")
+            logger.info("Creation subscription cancelled", subscription_id=subscription_id)
             raise
         except Exception as e:
-            logger.error(f"Error in creation subscription {subscription_id}: {e}")
+            logger.error("Error in creation subscription", subscription_id=subscription_id, error=str(e))
             yield self._create_error_event(str(e))
     
     @strawberry.subscription(description="Subscribe to {{ prefix_name }} update events")
@@ -181,7 +181,7 @@ class {{ PrefixName }}SubscriptionResolver:
             filter_criteria=filter_criteria
         )
         
-        logger.info(f"Client subscribed to {{ prefix_name }} updates (subscription: {subscription_id}, entity: {{{ prefix_name }}_id})")
+        logger.info("Client subscribed to {{ prefix_name }} updates", subscription_id=subscription_id, {{ prefix_name }}_id={{ prefix_name }}_id)
         
         try:
             async for bus_event in event_generator:
@@ -193,10 +193,10 @@ class {{ PrefixName }}SubscriptionResolver:
                     yield change_event
                     
         except asyncio.CancelledError:
-            logger.info(f"Update subscription {subscription_id} cancelled")
+            logger.info("Update subscription cancelled", subscription_id=subscription_id)
             raise
         except Exception as e:
-            logger.error(f"Error in update subscription {subscription_id}: {e}")
+            logger.error("Error in update subscription", subscription_id=subscription_id, error=str(e))
             yield self._create_error_event(str(e))
     
     @strawberry.subscription(description="Subscribe to {{ prefix_name }} deletion events")
@@ -230,7 +230,7 @@ class {{ PrefixName }}SubscriptionResolver:
             filter_criteria=filter_criteria
         )
         
-        logger.info(f"Client subscribed to {{ prefix_name }} deletion events (subscription: {subscription_id})")
+        logger.info("Client subscribed to {{ prefix_name }} deletion events", subscription_id=subscription_id)
         
         try:
             async for bus_event in event_generator:
@@ -240,10 +240,10 @@ class {{ PrefixName }}SubscriptionResolver:
                     yield change_event
                     
         except asyncio.CancelledError:
-            logger.info(f"Deletion subscription {subscription_id} cancelled")
+            logger.info("Deletion subscription cancelled", subscription_id=subscription_id)
             raise
         except Exception as e:
-            logger.error(f"Error in deletion subscription {subscription_id}: {e}")
+            logger.error("Error in deletion subscription", subscription_id=subscription_id, error=str(e))
             yield self._create_error_event(str(e))
     
     @strawberry.subscription(description="Subscribe to batch operation events")
@@ -277,7 +277,7 @@ class {{ PrefixName }}SubscriptionResolver:
             filter_criteria=filter_criteria
         )
         
-        logger.info(f"Client subscribed to {{ prefix_name }} batch operations (subscription: {subscription_id})")
+        logger.info("Client subscribed to {{ prefix_name }} batch operations", subscription_id=subscription_id)
         
         try:
             async for bus_event in event_generator:
@@ -287,10 +287,10 @@ class {{ PrefixName }}SubscriptionResolver:
                     yield change_event
                     
         except asyncio.CancelledError:
-            logger.info(f"Batch operations subscription {subscription_id} cancelled")
+            logger.info("Batch operations subscription cancelled", subscription_id=subscription_id)
             raise
         except Exception as e:
-            logger.error(f"Error in batch operations subscription {subscription_id}: {e}")
+            logger.error("Error in batch operations subscription", subscription_id=subscription_id, error=str(e))
             yield self._create_error_event(str(e))
     
     @strawberry.subscription(description="Get real-time subscription statistics")
@@ -315,12 +315,12 @@ class {{ PrefixName }}SubscriptionResolver:
         
         # Check if user is authorized for stats (admin only)
         if not await self._is_authorized_for_stats(context):
-            logger.warning(f"Unauthorized stats subscription attempt from user {context.user_id}")
+            logger.warning("Unauthorized stats subscription attempt", user_id=context.user_id)
             return
         
         event_bus = get_event_bus()
         
-        logger.info(f"Client subscribed to subscription stats (interval: {interval_seconds}s)")
+        logger.info("Client subscribed to subscription stats", interval_seconds=interval_seconds)
         
         try:
             while True:
@@ -346,7 +346,7 @@ class {{ PrefixName }}SubscriptionResolver:
             logger.info("Stats subscription cancelled")
             raise
         except Exception as e:
-            logger.error(f"Error in stats subscription: {e}")
+            logger.error("Error in stats subscription", error=str(e))
     
     # Helper methods
     
