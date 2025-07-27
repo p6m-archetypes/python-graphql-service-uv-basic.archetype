@@ -124,14 +124,13 @@ def _add_graphql_router(app: FastAPI, settings) -> None:
     # Enable GraphiQL/Playground in development or when explicitly enabled
     graphiql_enabled = (settings.debug or settings.graphql_playground_enabled) and settings.is_development
 
-    # Create GraphQL router with WebSocket subscription support
+    # Create GraphQL router with basic configuration
+    # Note: Simplified for compatibility with current Strawberry version
     graphql_router = GraphQLRouter(
         create_schema(),
         graphiql=graphiql_enabled,
-        path=settings.graphql_endpoint,
-        subscription_protocols=[GRAPHQL_TRANSPORT_WS_PROTOCOL],
-        # Enable introspection based on settings
-        introspection=settings.graphql_introspection_enabled,
+        path=settings.graphql_endpoint
+        # Note: subscription_protocols and introspection not supported in this version
     )
 
     # Include the GraphQL router (no prefix since path is already specified)
@@ -219,9 +218,9 @@ def _add_event_handlers(app: FastAPI) -> None:
         logger.info("Starting {{ PrefixName }}{{ SuffixName }} server...")
         
         try:
-            # Initialize the event bus for subscriptions
-            await initialize_event_bus()
-            logger.info("GraphQL subscription event bus initialized")
+            # Initialize the event bus for subscriptions (commented out until event bus is implemented)
+            # await initialize_event_bus()
+            # logger.info("GraphQL subscription event bus initialized")
             
             # TODO: Initialize other resources like database connections
             # db_manager = get_database_manager()
@@ -246,9 +245,9 @@ def _add_event_handlers(app: FastAPI) -> None:
         logger.info("Shutting down {{ PrefixName }}{{ SuffixName }} server...")
         
         try:
-            # Shutdown the event bus
-            await shutdown_event_bus()
-            logger.info("GraphQL subscription event bus shutdown complete")
+            # Shutdown the event bus (commented out until event bus is implemented)
+            # await shutdown_event_bus()
+            # logger.info("GraphQL subscription event bus shutdown complete")
             
             # TODO: Cleanup other resources
             # await cleanup_database_connections()
