@@ -45,11 +45,11 @@ my-awesome-service/
 
 ```bash
 # Generate a new service
-archetect generate https://github.com/p6m-archetypes/python-graphql-service-basic.archetype.git my-new-service
+archetect render https://github.com/p6m-archetypes/python-graphql-service-basic.archetype.git#v1
 
 # Answer the prompts:
 # org-name: myorg
-# solution-name: myproject  
+# solution-name: myproject
 # prefix-name: awesome
 # suffix-name: service
 
@@ -83,6 +83,7 @@ docker-compose up -d
 ## ✨ Key Features
 
 ### 🏛️ Enterprise Architecture
+
 - **Hexagonal Architecture**: Clean separation of concerns
 - **Modular Design**: Independent, reusable packages
 - **Schema-First GraphQL**: Pure schema definitions in API package, implementations in server
@@ -90,6 +91,7 @@ docker-compose up -d
 - **Error Handling**: Structured exception management
 
 ### 🎪 Modern GraphQL Stack
+
 - **Strawberry GraphQL**: Type-safe, modern GraphQL library for Python
 - **FastAPI Integration**: High-performance async web framework with GraphQL
 - **Real-time Subscriptions**: WebSocket-based GraphQL subscriptions
@@ -98,6 +100,7 @@ docker-compose up -d
 - **GraphQL Playground**: Interactive query and exploration interface
 
 ### 🔧 Modern Python Ecosystem
+
 - **UV Package Manager**: Fast, reliable dependency management
 - **Python 3.11+**: Modern language features and performance
 - **FastAPI**: High-performance, modern async web framework
@@ -106,6 +109,7 @@ docker-compose up -d
 - **Structured Logging**: JSON-structured logs with contextual information
 
 ### 📊 GraphQL-Specific Monitoring
+
 - **GraphQL Metrics**: Operation-specific Prometheus metrics
 - **Grafana Dashboards**: Pre-configured GraphQL monitoring dashboards
 - **Query Performance**: Request rate, response time, and error tracking by operation
@@ -114,6 +118,7 @@ docker-compose up -d
 - **Health Checks**: Comprehensive service health reporting
 
 ### 🧪 Testing Excellence
+
 - **pytest Framework**: Modern testing with async support
 - **GraphQL Test Client**: Custom test utilities for GraphQL operations
 - **TestContainers**: Isolated integration testing
@@ -122,6 +127,7 @@ docker-compose up -d
 - **CI Integration**: Automated testing in GitHub Actions
 
 ### 🚢 Production Ready
+
 - **Multi-stage Dockerfile**: Optimized container builds
 - **Docker Compose**: Complete development environment
 - **Database Migrations**: Alembic-powered schema management
@@ -134,12 +140,13 @@ docker-compose up -d
 This archetype includes a comprehensive validation suite that ensures generated services meet production standards:
 
 - **✅ 0 manual fixes required** - Services work immediately after generation
-- **✅ <2 minutes from generation to running service** - Fast development cycle  
+- **✅ <2 minutes from generation to running service** - Fast development cycle
 - **✅ 100% integration test pass rate** - Reliable, tested code
 - **✅ Template validation** - No hardcoded values remain
 - **✅ GraphQL connectivity** - Full schema introspection and operation testing
 
 Run the validation suite:
+
 ```bash
 ./validate_archetype.sh
 ```
@@ -149,6 +156,7 @@ Run the validation suite:
 This archetype has been extensively updated and tested:
 
 ### Fixed Issues ✅
+
 1. **Package Configuration Modernization** - Updated all pyproject.toml files to modern standards
 2. **Strawberry GraphQL Integration** - Complete GraphQL implementation with FastAPI
 3. **Python Package Structure** - Fixed namespace organization and import paths
@@ -163,6 +171,7 @@ This archetype has been extensively updated and tested:
 12. **Port Configuration** - Standardized on port 8080 for GraphQL services
 
 ### Verification ✅
+
 - **Comprehensive test suite** validates all success criteria
 - **GraphQL schema validation** ensures proper type definitions
 - **Integration testing** covers all GraphQL operations
@@ -182,6 +191,7 @@ Generated services include comprehensive documentation:
 ## 🔧 GraphQL Features
 
 ### Core Operations
+
 - **Queries**: Efficient data fetching with type safety
 - **Mutations**: Data modification operations
 - **Subscriptions**: Real-time updates via WebSocket
@@ -189,6 +199,7 @@ Generated services include comprehensive documentation:
 - **Type Safety**: Full type validation with Strawberry and Pydantic
 
 ### Advanced Features
+
 - **Query Complexity Analysis**: Protection against expensive operations
 - **Depth Limiting**: Prevent deeply nested queries
 - **Rate Limiting**: Request throttling for production use
@@ -196,6 +207,7 @@ Generated services include comprehensive documentation:
 - **Custom Scalars**: Extended type system support
 
 ### Development Experience
+
 - **GraphQL Playground**: Interactive query interface (development)
 - **Schema Validation**: Compile-time schema verification
 - **Hot Reload**: Development server with automatic reloading
@@ -206,6 +218,7 @@ Generated services include comprehensive documentation:
 This archetype includes several **enterprise-grade features** that are temporarily commented out for compatibility with the current Strawberry GraphQL version. These features provide significant value for production deployments:
 
 ### 🔌 WebSocket Subscriptions
+
 - **Real-time GraphQL subscriptions** via WebSocket
 - **Event bus system** for decoupled subscription management
 - **Subscription filtering** and **connection management**
@@ -215,6 +228,7 @@ This archetype includes several **enterprise-grade features** that are temporari
 **Re-enable**: Uncomment WebSocket route and event bus initialization
 
 ### 📊 Advanced GraphQL Monitoring
+
 - **Operation-specific Prometheus metrics** (request rate, latency, errors by GraphQL operation)
 - **Query complexity tracking** and **performance analysis**
 - **Subscription monitoring** (active connections, subscription rates)
@@ -224,6 +238,7 @@ This archetype includes several **enterprise-grade features** that are temporari
 **Re-enable**: Uncomment monitoring extensions in `server/graphql/schema.py`
 
 ### 🛡️ GraphQL Security Extensions
+
 - **Query complexity analysis** with configurable limits
 - **Query depth limiting** to prevent deeply nested attacks
 - **Rate limiting** per operation type
@@ -234,6 +249,7 @@ This archetype includes several **enterprise-grade features** that are temporari
 **Re-enable**: Uncomment security extensions in `server/graphql/schema.py`
 
 ### 🔧 Advanced Resolvers & DataLoaders
+
 - **DataLoader pattern** for N+1 query prevention
 - **Context-aware resolvers** with dependency injection
 - **Advanced pagination** with cursor-based navigation
@@ -243,6 +259,7 @@ This archetype includes several **enterprise-grade features** that are temporari
 **Re-enable**: Uncomment resolver imports and implementations
 
 ### 📦 Cross-Package Integration
+
 - **Full API package integration** - Schema definitions from API package
 - **Advanced type system** - Complex GraphQL types and inputs
 - **Business logic integration** - Core package business rules in resolvers
@@ -253,24 +270,27 @@ This archetype includes several **enterprise-grade features** that are temporari
 ### 🔧 How to Re-Enable Advanced Features
 
 1. **Check Strawberry GraphQL compatibility**:
+
    ```bash
    # Update to compatible versions
    uv add strawberry-graphql@latest
    ```
 
 2. **Re-enable features incrementally**:
+
    ```bash
    # Start with monitoring
    # Uncomment monitoring extensions in server/graphql/schema.py
-   
+
    # Add security features
    # Uncomment security extensions
-   
+
    # Enable subscriptions last
    # Uncomment WebSocket routes and event bus
    ```
 
 3. **Test each feature**:
+
    ```bash
    # Run tests to ensure compatibility
    uv run pytest -m graphql
@@ -282,7 +302,7 @@ This archetype includes several **enterprise-grade features** that are temporari
 ### 💡 Why These Features Are Valuable
 
 - **Production Readiness**: Enterprise-grade security, monitoring, and performance
-- **Scalability**: Efficient subscription management and query optimization  
+- **Scalability**: Efficient subscription management and query optimization
 - **Observability**: Deep GraphQL operation insights and performance tracking
 - **Security**: Protection against common GraphQL attack vectors
 - **Developer Experience**: Rich tooling and debugging capabilities
@@ -304,4 +324,4 @@ This archetype is released under the MIT License. Generated services inherit thi
 
 ---
 
-**Ready to build production-grade GraphQL services?** Generate your first service with the command above and have a fully functional GraphQL microservice running in under 2 minutes! 🚀 
+**Ready to build production-grade GraphQL services?** Generate your first service with the command above and have a fully functional GraphQL microservice running in under 2 minutes! 🚀
