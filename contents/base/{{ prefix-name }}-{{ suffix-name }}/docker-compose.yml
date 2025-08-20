@@ -8,7 +8,7 @@ services:
       target: production
     container_name: "{{ prefix-name }}-{{ suffix-name }}"
     ports:
-      - "8000:8000"  # FastAPI REST port
+      - "8000:8000"  # GraphQL API port
       - "8080:8080"  # Management HTTP port
     environment:
       - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/{{ prefix_name }}_{{ suffix_name }}

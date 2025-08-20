@@ -69,7 +69,7 @@ USER appuser
 # Set working directory to server package to avoid namespace conflicts
 WORKDIR /app/{{ prefix-name }}-{{ suffix-name }}-server/src
 
-# Expose ports (FastAPI default 8000, management 8080)
+# Expose ports (GraphQL API 8000, management 8080)
 EXPOSE 8000 8080
 
 # Health check
