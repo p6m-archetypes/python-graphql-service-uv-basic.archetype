@@ -60,7 +60,8 @@ jobs:
         with:
           image-name: {{ prefix-name }}-{{ suffix-name }}-server
           image-tag: ${{'{'}}{ steps.cut-tag.outputs.version }}
-          registry: {{ org-name }}-{{ solution-name }}-docker-local/applications
+          registry: ${{'{'}}{ vars.ARTIFACTORY_HOSTNAME }}/${{'{'}}{ vars.ARTIFACTORY_PROJECT }}-docker-local/applications
+          platforms: linux/amd64,linux/arm64
           push: true
           version: ${{'{'}}{ steps.cut-tag.outputs.version }}
 
